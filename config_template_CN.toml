@@ -1,0 +1,164 @@
+# -- OpenType Rebuilder 配置文件 --
+# -- 版本: 1.0.0 --
+# -- 格式: TOML --
+# -- 编码: UTF-8（有无 BOM 均可） --
+# -- 配置文件中的所有项都是可选的，打上注释或者干脆删掉它们都可以。--
+
+
+[General]
+
+version = 1.23    # 版本号
+
+# RFC 3339 时间格式
+# yyyy-mm-ddThh:mm:ss[+/-]hh:mm
+# ---日期---T--时间--[+/-]时区-
+# createdTime = 2017-08-01T12:12:12+08:00    # 创建时间
+# modifiedTime = 2017-08-01T12:12:12+08:00    # 修改时间
+
+# 可安装（无限制） = 0, 可编辑 = 1, 预览和打印 = 2, 受限制 = 3
+embeddingRestriction = 0    # 嵌入限制
+
+# 仅限于 `OS/2` 表版本 1 或更高版本
+# 控制 Microsoft Windows 和 Office 对字体语言的识别。
+# 常用的代码页: latin, latinExt, macRoman, cyrillic, greek, turkish, hebrew,
+# arabic, baltic, vietnamese, thai, jis, gbk, big5, korWansung, korJohab
+codepages = ['latin', 'macRoman', 'gbk']    # 代码页
+
+# 改变 CFF-CID 字体的 ROS 设置。
+# 仅当必要时才应改变 ROS 值。
+# cidRegistry = 'Adobe'
+# cidOrdering = 'Identity'
+# cidSupplement = 0
+
+
+
+[Name]
+
+[Name.en]
+
+# 如果指定了 [Name] 分组，那么该项（英语家族名）是整个 [Name] 分组唯一的必选项。
+# 除了英语家族名以外的其余所有选项都可以去掉。
+# OT Rebuilder 将根据已有信息自动生成其他必要数据。
+fontFamily = 'OT Rebuilder Test'    # 家族名
+
+fontSubfamily = 'Light Italic'    # 子族名
+fontFullName = 'OT Rebuilder Test Light Italic'    # 字体全名
+postScriptName = 'OTRebuilderTest-LightItalic'    # 字体 PostScript 名称
+versionString = '字体版本的详细信息，使用“Version x.yz”格式兼容性最佳。'    # 字体版本信息
+uniqueID = 'OT Rebuilder Test Light Italic; Version 1.23'    # 字体唯一标识符
+copyright = 'OpenType, OpenSource.'    # 版权
+trademark = 'OT Rebuilder is powered by fontTools.'    # 商标
+description = 'OT Rebuilder test flight.'    # 字体描述
+designer = 'Pal3love'    # 设计方
+designerURL = 'https://github.com/Pal3love'    # 设计方网站
+distributor = 'Your Company'    # 发行商
+
+# 发行商 ID 由至多四个半角英文或数字构成
+distributorID = 'TEST'    # 发行商 ID
+
+distributorURL = 'http://distributor.com/'    # 发行商网站
+license = '''From here write any sentences and symbols you like.
+Paragraphs are also supported. For paragraphs please do not indent.
+'''    # 许可协议全文
+licenseURL = 'http://www.w3.org/'    # 许可协议网址
+
+
+# 简体中文
+[Name.zh-Hans]
+fontFamily = 'OT Rebuilder 测试'
+fontSubfamily = '半粗斜体'
+fontFullName = 'OT Rebuilder 测试 半粗斜体'
+copyright = '开放，开源。'
+trademark = 'OT Rebuilder 以 fontTools 为基础实现。'
+description = 'OT Rebuilder 第一次全面测试。'
+designer = '梦回琼华'
+designerURL = 'https://github.com/Pal3love'
+distributor = '您的公司'
+distributorURL = 'http://distributor.cn/'
+license = '''这里可以写很详细的许可协议全文。
+支持段落。请顶格写，不要留有缩进。
+'''
+licenseURL = 'http://www.cnnic.net.cn/'
+
+
+# 如有需要，请随意添加其他语言分组。
+# 语言标识大全: http://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+# 繁体中文
+# [Name.zh-Hant]
+# 写点啥吧
+
+# 日语
+# [Name.ja]
+# 写点啥吧
+
+# 朝鲜语
+# [Name.ko]
+# 写点啥吧
+
+
+
+[Style]
+
+# 取值范围: [1 - 10]
+# 大体上, 极细 = 1, 超细 = 2, 细体 = 3, 常规 = 4,
+# 中等 = 5, 半粗 = 6, 粗体 = 7, 大粗 = 8, 特粗 = 9, 极粗 = 10。
+# 请为您的字族成员选择最接近的字重值。
+weightScale = 4    # 字重值
+
+# 取值范围: [1 - 9]
+# 极窄 = 1, 超窄 = 2, 狭窄 = 3, 半窄 = 4, 中等 = 5,
+# 半宽 = 6, 宽敞 = 7, 超宽 = 8, 极宽 = 9。
+# 请为您的字族成员选择最接近的宽窄值。
+widthScale = 5    # 宽窄值
+
+# 仅限于 `OS/2` 表版本 4 或更高版本
+# 关闭（默认）：使用 winDescender 和 winAscender 变量决定行高
+# 开启: 使用 typoAscender 和 typoDescender 变量决定行高
+# useTypoMetrics = false    # 增加 typo 类变量权重
+
+# 仅限于 `OS/2` 表版本 4 或更高版本
+# 该项仅用于控制 Windows 字体管理器的家族识别，对除 Windows 之外的其他平台无效。
+# 有时 Windows 字体管理器并不仅仅根据家族/子族值为字体家族分组。
+# 开启该项可以强制 Windows 字体管理器使用家族/子族值为字体分组。
+# forcePreferredFamily = true    # 强制使用 Preferred Family 字段
+
+# 子族链接（style-linking）选项。该项控制 MS Office 等软件的粗体/斜体替换功能。
+# 无链接 = 0, 链接常规体 = 1, 链接粗体 = 2, 链接斜体 = 3, 链接粗斜体 = 4。
+# 子族链接常见于西文字体，很少有制作子族链接的中日韩字体。
+# 为了确保字族链接成功，请为它们的家族/子族名填写合适的值。
+styleLink = 0    # 子族链接
+
+# 该项控制字体是否被识别为等宽（monospaced）字体。等宽字体常见于代码编辑器当中。
+# 对于非等宽字体（绝大多数），请关闭该项。
+# isMonospaced = false    # 等宽字体
+
+# 负值代表向右倾斜，即绝大多数西文斜体的倾斜方向。
+# italicAngle = -12.0    # 斜体倾斜角
+
+# 负值表示下划线低于基线。
+# underlinePosition = -217    # 下划线位置
+# 下划线的厚度。
+# underlineThickness = 150    # 下划线厚度
+
+
+# Windows 根据以下分类值挑选风格最为接近的字体作为回退（fallback）字体。
+# 示例值取自 Arial 字体。
+
+[Style.IBM]
+# IBM 字体分类: https://www.microsoft.com/typography/otspec/ibmfc.htm
+# ibmStyleClass = 8
+# ibmStyleSubclass = 5
+
+
+# [Style.PANOSE]
+# 蒙纳 PANOSE 字体分类: http://monotype.de/services/pan1
+# familykind = 2
+# subkind1 = 11
+# subkind2 = 6
+# subkind3 = 4
+# subkind4 = 2
+# subkind5 = 2
+# subkind6 = 2
+# subkind7 = 2
+# subkind8 = 2
+# subkind9 = 4

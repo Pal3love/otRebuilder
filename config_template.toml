@@ -1,0 +1,163 @@
+# -- OpenType Rebuilder Configuration File --
+# -- Version: 1.0.0 --
+# -- Format: TOML --
+# -- Encoding: UTF-8(with/without BOM) --
+
+
+[General]
+
+version = 1.23
+
+# RFC 3339 Time format
+# yyyy-mm-ddThh:mm:ss[+/-]hh:mm
+# ---Date---T--Time--[+/-]TZone
+# createdTime = 2017-08-01T12:12:12+08:00
+# modifiedTime = 2017-08-01T12:12:12+08:00
+
+# Installable (no restriction) = 0, editable = 1, preview & print = 2, restricted = 3
+embeddingRestriction = 0
+
+# OS/2.version 1 or above only
+# This is for language identification within Microsoft Windows and Office.
+# Common codepages: latin, latinExt, macRoman, cyrillic, greek, turkish, hebrew,
+# arabic, baltic, vietnamese, thai, jis, gbk, big5, korWansung, korJohab
+codepages = ['latin', 'macRoman', 'gbk']
+
+# Change ROS within a CFF-based CID font.
+# Use it only when necessary.
+# cidRegistry = 'Adobe'
+# cidOrdering = 'Identity'
+# cidSupplement = 0
+
+
+
+[Name]
+
+[Name.en]
+
+# If [Name] is specified, this is **the only required item** to be declared.
+# All other name items except en.fontFamily can be removed if you don't need them.
+# OT Rebuilder will automatically generate as much information as it can.
+fontFamily = 'OT Rebuilder Test'
+
+fontSubfamily = 'Light Italic'
+fontFullName = 'OT Rebuilder Test Light Italic'
+postScriptName = 'OTRebuilderTest-LightItalic'
+versionString = 'Detailed description of font version. "Version x.yz" format is recommended.'
+uniqueID = 'OT Rebuilder Test; Version 1.23'
+copyright = 'OpenType, OpenSource.'
+trademark = 'OT Rebuilder is powered by fontTools.'
+description = 'OT Rebuilder test flight.'
+designer = 'Pal3love'
+designerURL = 'https://github.com/Pal3love'
+distributor = 'Your Company'
+
+# 4 characters of distributor ID, not designer ID.
+distributorID = 'TEST'
+
+distributorURL = 'http://distributor.com/'
+license = '''From here write any sentences and symbols you like.
+Paragraphs are also supported. For paragraphs please do not indent.
+'''
+licenseURL = 'http://www.w3.org/'
+
+
+# Simplified Chinese
+[Name.zh-Hans]
+fontFamily = 'OT Rebuilder 测试'
+fontSubfamily = '半粗斜体'
+fontFullName = 'OT Rebuilder 测试 半粗斜体'
+copyright = '开放，开源。'
+trademark = 'OT Rebuilder 以 fontTools 为基础实现。'
+description = 'OT Rebuilder 第一次全面测试。'
+designer = '梦回琼华'
+designerURL = 'https://github.com/Pal3love'
+distributor = '您的公司'
+distributorURL = 'http://distributor.cn/'
+license = '''这里可以写很详细的许可协议全文。
+支持段落。请顶格写，不要留有缩进。
+'''
+licenseURL = 'http://www.cnnic.net.cn/'
+
+
+# Uncomment the following when needed.
+# Available language tags: http://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+# Traditional Chinese
+# [Name.zh-Hant]
+# Add some stuff
+
+# Japanese
+# [Name.ja]
+# Add some stuff
+
+# Korean
+# [Name.ko]
+# Add some stuff
+
+
+
+[Style]
+
+# Range: [1 - 10]
+# Generally, Ultralight = 1, Extralight = 2, Light = 3, Regular = 4,
+# Medium = 5, Semibold = 6, Bold = 7, Extrabold = 8, Heavy = 9, Black = 10.
+# Please choose the closest value for your font.
+weightScale = 4
+
+# Range: [1 - 9]
+# Ultra-condensed = 1, Extra-condensed = 2, Condensed = 3, Semi-condensed = 4, Medium = 5,
+# Semi-expanded = 6, Expanded = 7, Extra-expanded = 8, Ultra-expanded = 9.
+# Please choose the closest value for your font.
+widthScale = 5
+
+# OS/2.version 4 or above only
+# False: use winDescender & winAscender to decide line space
+# True: use typoAscender & typoDescender to decide line height
+# useTypoMetrics = false  
+
+# OS/2.version 4 or above only
+# This is for Windows identification only, having no effect on platforms except Windows.
+# Sometimes Windows doesn't identify font families only by the family/subfamily values.
+# Set it true to force Windows identify them by exclusive family/subfamily values.
+# forcePreferredFamily = true
+
+# Style-linking option, for bold/italic/boldItalic replacements like MS Office.
+# No style-linking = 0, linking regular = 1,
+# Linking bold = 2, linking italic = 3, linking boldItalic = 4.
+# To ensure style-linked fonts work, please properly specify their families and subfamilies.
+# styleLink = 0
+
+# Useful for IDE font selectors such as MS Visual Studio.
+# For non-monospaced fonts please set it to false.
+# isMonospaced = false
+
+# Negative means leaning to the right, right for most italic/oblique fonts.
+# italicAngle = -12.0
+
+# Negative means below baseline.
+# underlinePosition = -217
+# Thickness of the font underline.
+# underlineThickness = 150
+
+
+# Windows uses the following classifications for font fallbacks.
+# Sample values are retrieved from Arial.
+
+[Style.IBM]
+# IBM classification guideline: https://www.microsoft.com/typography/otspec/ibmfc.htm
+# ibmStyleClass = 8
+# ibmStyleSubclass = 5
+
+
+# [Style.PANOSE]
+# Monotype PANOSE guideline: http://monotype.de/services/pan1
+# familykind = 2
+# subkind1 = 11
+# subkind2 = 6
+# subkind3 = 4
+# subkind4 = 2
+# subkind5 = 2
+# subkind6 = 2
+# subkind7 = 2
+# subkind8 = 2
+# subkind9 = 4
