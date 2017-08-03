@@ -1,7 +1,8 @@
 # -- OpenType Rebuilder Configuration File --
-# -- Version: 1.0.0 --
+# -- Version: 1.2.0 --
 # -- Format: TOML --
 # -- Encoding: UTF-8(with/without BOM) --
+# -- Almost all options are **optional**. Just comment or delete any unnecessary options.--
 
 
 [General]
@@ -96,6 +97,29 @@ licenseURL = 'http://www.cnnic.net.cn/'
 
 
 
+[Metrics]
+
+# Horizontal (`hhea`) metrics
+hheaAscender = 880
+hheaDescender = -120
+hheaLineGap = 1000
+
+# Vertical (`vhea`) metrics
+vheaAscender = 500
+vheaDescender = -500
+vheaLineGap = 1000
+
+# Typo metrics
+typoAscender = 880
+typoDescender = -120
+typoLineGap = 1000
+
+# Windows metrics
+winAscender = 880
+winDescender = -120
+
+
+
 [Style]
 
 # Range: [1 - 10]
@@ -161,3 +185,4 @@ widthScale = 5
 # subkind7 = 2
 # subkind8 = 2
 # subkind9 = 4
+

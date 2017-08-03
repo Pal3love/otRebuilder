@@ -109,6 +109,8 @@ class Rebuilder(Workers.Worker):
             return
         self.__updateCFF()
         self.__updateHead()
+        self.__updateHhea()
+        self.__updateVhea()
         self.__updatePost()
         self.__updateOS2f2()
         self.__rebuildName()
@@ -204,6 +206,40 @@ class Rebuilder(Workers.Worker):
                     pass
         return
 
+    def __updateHhea(self):
+        hheaT = self.font.get("hhea")
+        if not hheaT:
+            return
+        metrics = self.config.get("Metrics")
+        if metrics:
+            hheaAscender = metrics.get("hheaAscender")
+            hheaDescender = metrics.get("hheaDescender")
+            hheaLineGap = metrics.get("hheaLineGap")
+            if isinstance(hheaAscender, float) or isinstance(hheaAscender, int):
+                hheaT.ascent = int(hheaAscender)
+            if isinstance(hheaDescender, float) or isinstance(hheaDescender, int):
+                hheaT.descent = int(hheaDescender)
+            if isinstance(hheaLineGap, float) or isinstance(hheaLineGap, int):
+                hheaT.lineGap = int(hheaLineGap)
+        return
+
+    def __updateVhea(self):
+        vheaT = self.font.get("vhea")
+        if not vheaT:
+            return
+        metrics = self.config.get("Metrics")
+        if metrics:
+            vheaAscender = metrics.get("vheaAscender")
+            vheaDescender = metrics.get("vheaDescender")
+            vheaLineGap = metrics.get("vheaLineGap")
+            if isinstance(vheaAscender, float) or isinstance(vheaAscender, int):
+                vheaT.ascent = int(vheaAscender)
+            if isinstance(vheaDescender, float) or isinstance(vheaDescender, int):
+                vheaT.descent = int(vheaDescender)
+            if isinstance(vheaLineGap, float) or isinstance(vheaLineGap, int):
+                vheaT.lineGap = int(vheaLineGap)
+        return
+
     def __updatePost(self):
         postT = self.font.get("post")
         if not postT:
@@ -240,6 +276,7 @@ class Rebuilder(Workers.Worker):
         self.__updateOS2f2_addNewAttrs()
         general = self.config.get("General")
         name = self.config.get("Name")
+        metrics = self.config.get("Metrics")
         style = self.config.get("Style")
         if general:
             embeddingRestriction = general.get("embeddingRestriction")
@@ -271,6 +308,22 @@ class Rebuilder(Workers.Worker):
             arcID = uArcID.encode("ascii")
             arcID += "    "
             OS2f2T.achVendID = arcID[:4]
+        if metrics:
+            typoAscender = metrics.get("typoAscender")
+            typoDescender = metrics.get("typoDescender")
+            typoLineGap = metrics.get("typoLineGap")
+            winAscender = metrics.get("winAscender")
+            winDescender = metrics.get("winDescender")
+            if isinstance(typoAscender, float) or isinstance(typoAscender, int):
+                OS2f2T.sTypoAscender = int(typoAscender)
+            if isinstance(typoDescender, float) or isinstance(typoDescender, int):
+                OS2f2T.sTypoDescender = int(typoDescender)
+            if isinstance(typoLineGap, float) or isinstance(typoLineGap, int):
+                OS2f2T.sTypoLineGap = int(typoLineGap)
+            if isinstance(winAscender, float) or isinstance(winAscender, int):
+                OS2f2T.usWinAscent = abs(int(winAscender))
+            if isinstance(winDescender, float) or isinstance(winDescender, int):
+                OS2f2T.usWinDescent = abs(int(winDescender))
         if style:
             widthScale = style.get("widthScale")
             weightScale = style.get("weightScale")
