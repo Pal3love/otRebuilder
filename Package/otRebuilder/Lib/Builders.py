@@ -370,9 +370,11 @@ class NameTableBuilder(object):
         return
 
     # Name ID 5, English US
+    # Format: "Version x.yz"
+    # To customize format and presision, use the method below.
     def addVersion(self, version):
         if isinstance(version, int) or isinstance(version, float):
-            self.addVersionString("Version " + str(abs(version)))
+            self.addVersionString("Version " + "%.2f" % abs(version))
         return
         
     # Name ID 5, English US

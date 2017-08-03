@@ -20,6 +20,44 @@ class Worker(object):
         self.jobs = jobsObj
 
 
+class OS2f2Worker(Worker):
+
+    @staticmethod
+    def getUsWeightClass(head):
+        if head and (head.macStyle & 1):
+            return 700
+        else:
+            return 400
+
+    @staticmethod
+    def getFsSelection(head):
+        fsSelection = 0
+        if not head:
+            return fsSelection
+        if (head.macStyle & 1):  # Set bold bit
+            fsSelection |= 1<<5
+        if (head.macStyle & 1<<1):  # Set italic bit
+            fsSelection |= 1
+        if not (head.macStyle & 1) and not (head.macStyle & 1<<1):  # Neither bold nor italic
+            fsSelection = 1<<6  # Set to regular
+        return fsSelection
+
+    @staticmethod
+    def recalcXAvgCharWidth(hmtx):
+        if not hmtx:
+            return 0
+        count = 0
+        sumWidth = 0
+        for glyfName in hmtx.metrics.keys():
+            # [0]: advance width; [1]: lsb
+            if hmtx.metrics[glyfName][0] == 0:
+                continue
+            else:            
+                sumWidth += hmtx.metrics[glyfName][0]
+                count += 1
+        return sumWidth // count
+
+
 class CmapWorker(Worker):
 
     @staticmethod
@@ -170,9 +208,9 @@ class NameWorker(Worker):
     @staticmethod
     def getVersionString(headTable):
         if not headTable or not headTable.fontRevision:
-            return "Version " + str(Constants.DEFAULT_FONT_REVISION)
+            return "Version " + "%.2f" % abs(Constants.DEFAULT_FONT_REVISION)
         else:
-            return "Version " + str(abs(headTable.fontRevision))
+            return "Version " + "%.2f" % headTable.fontRevision
 
     @staticmethod
     def getRecordsFromCFF(cffTable):

@@ -9,6 +9,8 @@ dependencyDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../De
 sys.path.insert(0, dependencyDir)
 
 
+REQUIRED_TABLES = ("cmap", "head", "hhea", "hmtx", "maxp")
+
 # Default values
 DEFAULT_FONT_NAME = "Default Font"
 DEFAULT_OS2f2_VERSION = 3
@@ -18,12 +20,16 @@ DEFAULT_ITALIC_ANGLE = -12.0
 DEFAULT_UNDERLINE_POSITION = -200
 DEFAULT_UNDERLINE_THICKNESS = 100
 
+OS2f2_LEGACY_SPACE_WGHTFCTR = 166
+OS2f2_LEGACY_LWRCASE_WGHTFCTR = (
+    64, 14, 27, 35, 100, 20, 14, 42, 63, 3, 6, 35, 20,
+    56, 56, 17, 4, 49, 56, 71, 31, 10, 18, 3, 18, 2
+    )  # Legacy weight factors from 'a' to 'z'
+
 # Default Parameters for otf2ttf
 OTF2TTF_DFLT_MAX_ERR = 1.0  # Measured in UPM
 OTF2TTF_DFLT_POST_FORMAT = 2.0
 OTF2TTF_DFLT_REVERSE = True
-
-REQUIRED_TABLES = ("cmap", "head", "hhea", "hmtx", "post")
 
 # Embedding Restriction Codes
 EMBED_INSTALLABLE = 0

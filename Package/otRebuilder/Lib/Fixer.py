@@ -49,12 +49,13 @@ class Fixer(Workers.Worker):
     def fixOS2f2(self):
         OS2f2 = self.font.get("OS/2")
         if OS2f2.usWeightClass > 1000 or OS2f2.usWeightClass < 1:
-            OS2f2.usWeightClass = 400  # Regular weight
+            OS2f2.usWeightClass = Workers.OS2f2Worker.getUsWeightClass(self.font["head"])
         if OS2f2.usWidthClass > 9 or OS2f2.usWidthClass < 1:
             OS2f2.usWidthClass = 5  # Medium width
         OS2f2.fsType &= 0b1110
         if self.jobs.general_recalc:
             OS2f2.recalcUnicodeRanges(self.font)
+            OS2f2.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"])
         if OS2f2.version < 4:
             OS2f2.fsSelection &= 0b1100001
         else:

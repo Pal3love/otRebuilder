@@ -574,7 +574,7 @@ class Rebuilder(Workers.Worker):
         if general:
             versionNum = general.get("version")
             if isinstance(versionNum, float) or isinstance(versionNum, int):
-                enVersionStr = "Version " + str(abs(versionNum))
+                enVersionStr = "Version " + "%.2f" % abs(versionNum)
         if self.__loadUstr(en.get("versionString")):
             enVersionStr = self.__loadUstr(en.get("versionString"))
         if enVersionStr.find(".") == -1:

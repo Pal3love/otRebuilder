@@ -10,6 +10,7 @@ sys.path.insert(0, dependencyDir)
 
 from fontTools.ttLib import newTable
 from fontTools.ttLib.tables import O_S_2f_2
+from fontTools.ttLib.standardGlyphOrder import standardGlyphOrder
 
 from otRebuilder.Lib import Builders
 from otRebuilder.Lib import Constants
@@ -25,10 +26,9 @@ class Initializer(Workers.Worker):
             print("Required tables: " + ", ".join(Constants.REQUIRED_TABLES), file = sys.stderr)
             sys.exit(1)
         else:
-            self.initMaxp()
             self.initOS2f2()
-            self.initPost()
             self.initName()
+            self.initPost()
             self.removeDSIG()
         return
 
@@ -64,15 +64,6 @@ class Initializer(Workers.Worker):
             table = self.font.get(tag)
         return
 
-    # If `maxp` doesn't exist, generate a new one.
-    def initMaxp(self):
-        if not self.font.has_key("maxp"):
-            self.font["maxp"] = self.__createMaxp()
-        if self.font["maxp"] is None:
-            print("ERROR: Invalid font file. Please make sure it is either TrueType or CFF-based.", file = sys.stderr)
-            sys.exit(1)
-        return
-
     # If `OS/2` doesn't exist, generate a new one with Constants.DEFAULT_OS2f2_VERSION.
     def initOS2f2(self):
         if not self.font.has_key("OS/2"):
@@ -86,9 +77,6 @@ class Initializer(Workers.Worker):
         return
 
     # If `post` doesn't exist, generate a new one with version 1.0.
-    # FontTools heavily relies on `post` to establish a font's data structure, so it would crash
-    # if there is no `post` table in the very beginning. Maybe one day fontTools would change its
-    # implementation, and at that time this method would actually work.
     def initPost(self):
         if not self.font.has_key("post"):
             self.font["post"] = self.__createPost()
@@ -162,32 +150,11 @@ class Initializer(Workers.Worker):
             pass
         return
 
-    def __createMaxp(self):
-        maxp = newTable("maxp")
-        if self.font.has_key("CFF "):
-            maxp.tableVersion = 0x00005000
-            maxp.numGlyphs = len(self.font.getGlyphOrder())
-        elif self.font.has_key("glyf"):
-            maxp.tableVersion = 0x00010000
-            maxp.recalc(self.font)
-            # The following are TT instructions metadata.
-            maxp.maxZones = 0
-            maxp.maxTwilightPoints = 0
-            maxp.maxStorage = 0
-            maxp.maxFunctionDefs = 0
-            maxp.maxInstructionDefs = 0
-            maxp.maxStackElements = 0
-            maxp.maxSizeOfInstructions = 0
-            maxp.maxComponentElements = 0
-        else:
-            return None
-        return maxp
-
     def __createOS2f2(self):
         OS2f2 = newTable("OS/2")
         OS2f2.version = Constants.DEFAULT_OS2f2_VERSION
-        OS2f2.xAvgCharWidth = self.__createOS2f2_recalcXAvgCharWidth()
-        OS2f2.usWeightClass = self.__createOS2f2_getUsWeightClass()
+        OS2f2.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"])
+        OS2f2.usWeightClass = Workers.OS2f2Worker.getUsWeightClass(self.font["head"])
         OS2f2.usWidthClass = 5
         OS2f2.fsType = 0
         OS2f2.ySubscriptXSize = 0
@@ -214,7 +181,7 @@ class Initializer(Workers.Worker):
         OS2f2.panose.bXHeight = 0
         OS2f2.recalcUnicodeRanges(self.font)
         OS2f2.achVendID = Constants.DEFAULT_OS2f2_ACHVENDID
-        OS2f2.fsSelection = self.__createOS2f2_getFsSelection()
+        OS2f2.fsSelection = Workers.OS2f2Worker.getFsSelection(self.font["head"])
         OS2f2.updateFirstAndLastCharIndex(self.font)
         OS2f2.sTypoAscender = self.font["hhea"].ascent
         OS2f2.sTypoDescender = self.font["hhea"].descent
@@ -296,7 +263,7 @@ class Initializer(Workers.Worker):
 
     def __createPost(self):
         post = newTable("post")
-        post.formatType = 1.0
+        post.formatType = 3.0
         post.italicAngle = 0.0
         post.underlinePosition = Constants.DEFAULT_UNDERLINE_POSITION
         post.underlineThickness = Constants.DEFAULT_UNDERLINE_THICKNESS
@@ -305,11 +272,11 @@ class Initializer(Workers.Worker):
         post.maxMemType42 = 0
         post.minMemType1 = 0
         post.maxMemType1 = 0
+        post.glyphOrder = None
         # Get metadata from CFF and change version
         cffT = self.font.get("CFF ")
         if cffT and hasattr(cffT, "cff") and cffT.cff:
             cff = cffT.cff
-            post.formatType = 3.0  # CFF-based fonts use version 3.0
             if hasattr(cff, "topDictIndex") and len(cff.topDictIndex) > 0:
                 if cff.topDictIndex[0].ItalicAngle != cff.topDictIndex[0].defaults["ItalicAngle"]:
                     post.italicAngle = float(cff.topDictIndex[0].ItalicAngle)
@@ -320,31 +287,4 @@ class Initializer(Workers.Worker):
                 if hasattr(cff.topDictIndex[0], "UnderlinePosition"):
                     post.underlinePosition = int(cff.topDictIndex[0].UnderlinePosition)
         return post
-
-    def __createOS2f2_recalcXAvgCharWidth(self):
-        hmtx = self.font["hmtx"]
-        count = 0
-        sumWidth = 0
-        for glyfName in hmtx.metrics.keys():
-            sumWidth += hmtx.metrics[glyfName][0]
-            count += 1
-        return sumWidth // count
-
-    def __createOS2f2_getUsWeightClass(self):
-        head = self.font["head"]
-        if (head.macStyle & 1):
-            return 700
-        else:
-            return 400
-
-    def __createOS2f2_getFsSelection(self):
-        head = self.font["head"]
-        fsSelection = 0
-        if (head.macStyle & 1):  # Set bold bit
-            fsSelection |= 1<<5
-        if (head.macStyle & 1<<1):  # Set italic bit
-            fsSelection |= 1
-        if not (head.macStyle & 1) and not (head.macStyle & 1<<1):  # Neither bold nor italic
-            fsSelection = 1<<6  # Set to regular
-        return fsSelection
 

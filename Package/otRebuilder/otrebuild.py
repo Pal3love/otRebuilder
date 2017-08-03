@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: python otrebuild.py [options] inputFont"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.1.1, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.1.2, powered by fontTools
 
     This is a simple tool aiming to resolve naming, styling and mapping
         issues among OpenType fonts. Without any options given, it can
@@ -70,7 +70,7 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.1.1, powered by fontT
             placeholder.
         --O1: Mild optimization, as a shortcut to --smoothRendering,
             --allowUpgrade, and --dummySignature.
-        --O2: Typical optimization, as a shortcut to --recalculate,
+        --O2: Typical optimization, as a shortcut to --recalculate, 
             --removeGlyphNames, --smoothRendering, --rebuildMapping,
             --allowUpgrade, and --dummySignature.
         --O3: Comprehensive optimization for release, as a shortcut to
@@ -343,7 +343,7 @@ def doConverts(ttfontObj, jobsObj):
         if jobsObj.init_removeGlyphNames:
             converter.otf2ttf(
                 Constants.OTF2TTF_DFLT_MAX_ERR, 
-                1.0,  # Ignore any stored glyph names.
+                3.0,  # Ignore any stored glyph names.
                 Constants.OTF2TTF_DFLT_REVERSE
                 )
         else:
