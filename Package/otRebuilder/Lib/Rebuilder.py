@@ -300,20 +300,32 @@ class Rebuilder(Workers.Worker):
                 if styleLink == Constants.STYLELINK_REGULAR:
                     OS2f2T.fsSelection |= 1<<6
                     if not weightScale:
+                        OS2f2T.usWeightClass = 400
                         OS2f2T.fsSelection &= ~0b0111111
+                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
+                            OS2f2T.panose.bWeight = 5
                 elif styleLink == Constants.STYLELINK_BOLD:
                     OS2f2T.fsSelection |= 1<<5
                     if not weightScale:
+                        OS2f2T.usWeightClass = 700
                         OS2f2T.fsSelection &= ~0b1011111
+                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
+                            OS2f2T.panose.bWeight = 8
                 elif styleLink == Constants.STYLELINK_ITALIC:
                     OS2f2T.fsSelection |= 1
                     if not weightScale:
+                        OS2f2T.usWeightClass = 400
                         OS2f2T.fsSelection &= ~0b1111110
+                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
+                            OS2f2T.panose.bWeight = 5
                 elif styleLink == Constants.STYLELINK_BOLDITALIC:
                     OS2f2T.fsSelection |= 1<<5
                     OS2f2T.fsSelection |= 1
                     if not weightScale:
+                        OS2f2T.usWeightClass = 700
                         OS2f2T.fsSelection &= ~0b1011110
+                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
+                            OS2f2T.panose.bWeight = 8
                 else:  # Constants.STYLELINK_NONE
                     pass
             if isinstance(useTypoMetrics, bool) and \
