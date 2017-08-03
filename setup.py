@@ -13,7 +13,7 @@ setup(
     maintainer = "Pal3love",
     maintainer_email = "pal3love@gmail.com",
     url = "https://github.com/Pal3love/otRebuilder",
-    license = "MIT License",
+    license = "MIT",
     platforms = ["Any"],
     packages = find_packages("Package"),
     package_dir = {'': 'Package'},
@@ -25,4 +25,13 @@ setup(
             "otrebuild = otRebuilder.otrebuild:main"
         ]
     },
+    zip_safe = True,
+    classifiers = [
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 2.7"
+    ],
 )
