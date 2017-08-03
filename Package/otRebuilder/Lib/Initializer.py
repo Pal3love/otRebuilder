@@ -142,12 +142,7 @@ class Initializer(Workers.Worker):
 
     def removeGlyphNames(self):
         # `post` always exists.
-        if self.isTrueType():
-            self.font["post"].formatType = 1.0
-        elif self.font.has_key("CFF "):
-            self.font["post"].formatType = 3.0
-        else:
-            pass
+        self.font["post"].formatType = 3.0
         return
 
     def __createOS2f2(self):
