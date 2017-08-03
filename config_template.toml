@@ -100,23 +100,23 @@ licenseURL = 'http://www.cnnic.net.cn/'
 [Metrics]
 
 # Horizontal (`hhea`) metrics
-hheaAscender = 880
-hheaDescender = -120
-hheaLineGap = 1000
+# hheaAscender = 880
+# hheaDescender = -120
+# hheaLineGap = 1000
 
 # Vertical (`vhea`) metrics
-vheaAscender = 500
-vheaDescender = -500
-vheaLineGap = 1000
+# vheaAscender = 500
+# vheaDescender = -500
+# vheaLineGap = 1000
 
 # Typo metrics
-typoAscender = 880
-typoDescender = -120
-typoLineGap = 1000
+# typoAscender = 880
+# typoDescender = -120
+# typoLineGap = 1000
 
 # Windows metrics
-winAscender = 880
-winDescender = -120
+# winAscender = 880
+# winDescender = -120
 
 
 

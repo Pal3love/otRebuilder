@@ -101,23 +101,23 @@ licenseURL = 'http://www.cnnic.net.cn/'
 [Metrics]
 
 # 横排尺寸（`hhea` 表）
-hheaAscender = 880    # `hhea` 上升部
-hheaDescender = -120    # `hhea` 下降部
-hheaLineGap = 1000    # `hhea` 行高
+# hheaAscender = 880    # `hhea` 上升部
+# hheaDescender = -120    # `hhea` 下降部
+# hheaLineGap = 1000    # `hhea` 行高
 
 # 竖排尺寸（`vhea` 表）
-vheaAscender = 500    # `vhea` 上升部
-vheaDescender = -500    # `vhea` 下降部
-vheaLineGap = 1000    # `vhea` 行高
+# vheaAscender = 500    # `vhea` 上升部
+# vheaDescender = -500    # `vhea` 下降部
+# vheaLineGap = 1000    # `vhea` 行高
 
 # Typo 尺寸（`OS/2` 表）
-typoAscender = 880    # Typo 上升部
-typoDescender = -120    # Typo 下降部
-typoLineGap = 1000    # Typo 行高
+# typoAscender = 880    # Typo 上升部
+# typoDescender = -120    # Typo 下降部
+# typoLineGap = 1000    # Typo 行高
 
 # Windows 尺寸（`OS/2` 表）
-winAscender = 880    # Windows 上升部
-winDescender = -120    # Windows 下降部
+# winAscender = 880    # Windows 上升部
+# winDescender = -120    # Windows 下降部
 
 
 
