@@ -23,14 +23,14 @@ from otRebuilder.Lib import Converter
 from otRebuilder.Lib import Constants
 
 
-usageStr = "usage: python otrebuild.py [options] inputFont"
+usageStr = "usage: otrebuild [options] <inputFont>"
 descriptionStr = """    OpenType Font Rebuilder: Version 1.1.2, powered by fontTools
 
-    This is a simple tool aiming to resolve naming, styling and mapping
-        issues among OpenType fonts. Without any options given, it can
-        scan and maintain metedata consistencies among font tables; with
-        a simple but powerful configuration file, all intricate data
-        fields within font tables such as `name`, `head`, `OS/2` can be
+    This is a simple tool to resolve naming, styling and mapping issues
+        among OpenType fonts. Without any options given, it can scan and
+        maintain metedata consistencies among font tables; with a simple
+        but powerful configuration file, all intricate data fields
+        within font tables such as `name`, `head`, `OS/2` can be
         automatically generated without compromising platform-specific
         compatibilities. It also supplies extra useful functionalities
         to simplify the OpenType font packaging workflow.
@@ -101,7 +101,7 @@ def parseArgs():
 
     parser = argparse.ArgumentParser(
         description = descriptionStr, 
-        usage = "python %(prog)s [options] inputFont", 
+        usage = "%(prog)s [options] <inputFont>", 
         formatter_class = argparse.RawDescriptionHelpFormatter
         )
     parser.add_argument("inputFont", metavar = "inputFont", help = argparse.SUPPRESS)
