@@ -1,4 +1,0 @@
-toml
-fonttools
-cu2qu
-ufoLib

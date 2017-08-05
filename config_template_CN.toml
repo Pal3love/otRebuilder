@@ -97,23 +97,23 @@ licenseURL = 'http://www.cnnic.net.cn/'
 
 
 
-# 上升部、下降部、行高设置
-[Metrics]
+# 上升部、下降部、行距设置
+# [Metrics]
 
 # 横排尺寸（`hhea` 表）
 # hheaAscender = 880    # `hhea` 上升部
 # hheaDescender = -120    # `hhea` 下降部
-# hheaLineGap = 1000    # `hhea` 行高
+# hheaLineGap = 1000    # `hhea` 行距
 
 # 竖排尺寸（`vhea` 表）
 # vheaAscender = 500    # `vhea` 上升部
 # vheaDescender = -500    # `vhea` 下降部
-# vheaLineGap = 1000    # `vhea` 行高
+# vheaLineGap = 1000    # `vhea` 行距
 
 # Typo 尺寸（`OS/2` 表）
 # typoAscender = 880    # Typo 上升部
 # typoDescender = -120    # Typo 下降部
-# typoLineGap = 1000    # Typo 行高
+# typoLineGap = 1000    # Typo 行距
 
 # Windows 尺寸（`OS/2` 表）
 # winAscender = 880    # Windows 上升部
@@ -141,7 +141,7 @@ widthScale = 5    # 宽窄值
 # useTypoMetrics = false    # 增加 typo 类变量权重
 
 # 仅限于 `OS/2` 表版本 4 或更高版本
-# 该项仅用于控制 Windows 字体管理器的家族识别，对除 Windows 之外的其他平台无效。
+# 该项仅用于控制 Windows 字体管理器的家族识别，对除 Windows 之外的平台无效。
 # 有时 Windows 字体管理器并不仅仅根据家族/子族值为字体家族分组。
 # 开启该项可以强制 Windows 字体管理器使用家族/子族值为字体分组。
 # forcePreferredFamily = true    # 强制使用 Preferred Family 字段

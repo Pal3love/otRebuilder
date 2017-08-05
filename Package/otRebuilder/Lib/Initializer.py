@@ -57,6 +57,12 @@ class Initializer(Workers.Worker):
         else:
             return False
 
+    def hasCFF2(self):
+        if self.font.has_key("CFF2"):
+            return True
+        else:
+            return False
+
     def refreshTables(self):
         tags = self.font.keys()
         for tag in tags:

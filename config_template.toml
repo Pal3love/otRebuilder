@@ -97,7 +97,7 @@ licenseURL = 'http://www.cnnic.net.cn/'
 
 
 
-[Metrics]
+# [Metrics]
 
 # Horizontal (`hhea`) metrics
 # hheaAscender = 880
