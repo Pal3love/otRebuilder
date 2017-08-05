@@ -1,0 +1,3 @@
+[console_scripts]
+otrebuild = otRebuilder.otrebuild:main
+

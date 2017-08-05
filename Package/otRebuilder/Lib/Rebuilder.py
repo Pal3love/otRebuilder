@@ -702,7 +702,7 @@ class Rebuilder(Workers.Worker):
         elif family and subfamily:
             lgcFmly = family + u" " + subfamily
         else:
-            pass
+            lgcFmly = family
         if self.__loadUstr(lang.get("fontFullName")):
             fullName = lang["fontFullName"]
         elif family and subfamily:
