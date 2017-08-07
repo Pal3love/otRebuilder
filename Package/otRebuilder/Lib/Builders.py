@@ -169,9 +169,9 @@ class cffTopDictBuilder(object):
             if hasattr(cff, "topDictIndex") and len(cff.topDictIndex) > 0:
                 cff.topDictIndex[0].FullName = ""
                 cff.topDictIndex[0].FamilyName = ""
-                cff.topDictIndex[0].Weight = ""
                 cff.topDictIndex[0].Copyright = ""
                 cff.topDictIndex[0].Notice = ""
+                # cff.topDictIndex[0].Weight = ""
                 # cff.topDictIndex[0].version = ""
                 # if hasattr(cff.topDictIndex[0], "ROS"):  # CID font
                     # cff.topDictIndex[0].CIDFontVersion = 0.0

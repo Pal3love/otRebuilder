@@ -131,17 +131,47 @@ class Rebuilder(Workers.Worker):
         cffT = self.font.get("CFF ")
         if not cffT:
             return
-        name = self.config.get("Name")
-        style = self.config.get("Style")
         general = self.config.get("General")
+        style = self.config.get("Style")
+        name = self.config.get("Name")
         builder = Builders.cffTopDictBuilder()
+        if general:  # Version priority: `head`.fontRevision < *specified*
+            builder.setVersion(self.font["head"].fontRevision)
+            builder.setVersion(general.get("version"))
+            builder.setROS(general.get("cidRegistry"), 
+                general.get("cidOrdering"), 
+                general.get("cidSupplement")
+                )
+        if style:
+            styleLink = style.get("styleLink")
+            weightScale = style.get("weightScale")
+            if styleLink in range(0, 5):
+                if styleLink == 2:
+                    builder.setItalicAngle(0.0)
+                    builder.setWeight(Constants.STANDARD_WEIGHTS[6])
+                elif styleLink == 3:
+                    builder.setItalicAngle(Constants.DEFAULT_ITALIC_ANGLE)
+                    builder.setWeight(Constants.STANDARD_WEIGHTS[3])
+                elif styleLink == 4:
+                    builder.setItalicAngle(Constants.DEFAULT_ITALIC_ANGLE)
+                    builder.setWeight(Constants.STANDARD_WEIGHTS[6])
+                else:
+                    builder.setItalicAngle(0.0)
+                    builder.setWeight(Constants.STANDARD_WEIGHTS[3])
+            if weightScale in range(1, 11):
+                builder.setWeight(Constants.STANDARD_WEIGHTS[weightScale - 1])
+            builder.setMonospaced(style.get("isMonospaced"))
+            builder.setItalicAngle(style.get("italicAngle"))
+            builder.setUnderlinePosition(style.get("underlinePosition"))
+            builder.setUnderlineThickness(style.get("underlineThickness"))
         if name and name.get("en"):
             family = self.__loadUstr(name["en"].get("fontFamily"))
-            fullName = self.__loadUstr(name["en"].get("fontFullName"))
             subfamily = self.__loadUstr(name["en"].get("fontSubfamily"))
+            fullName = self.__loadUstr(name["en"].get("fontFullName"))
             if family:
                 builder.clearCFFnameMenu(cffT)
             else:  # No family, no update
+                builder.applyToCFFtable(cffT)
                 return
             if not fullName and (family and subfamily):
                 fullName = family + u" " + subfamily
@@ -150,27 +180,6 @@ class Rebuilder(Workers.Worker):
             builder.setPostScriptName(name["en"].get("postScriptName"))
             builder.setCopyright(name["en"].get("copyright"))
             builder.setTrademark(name["en"].get("trademark"))
-        if style:
-            styleLink = style.get("styleLink")
-            weightScale = style.get("weightScale")
-            if styleLink in range(0, 5):
-                if styleLink > 2:
-                    builder.setItalicAngle(Constants.DEFAULT_ITALIC_ANGLE)
-                else:
-                    builder.setItalicAngle(0.0)
-            if weightScale in range(1, 11):
-                builder.setWeight(Constants.STANDARD_WEIGHTS[weightScale - 1])
-            builder.setMonospaced(style.get("isMonospaced"))
-            builder.setItalicAngle(style.get("italicAngle"))
-            builder.setUnderlinePosition(style.get("underlinePosition"))
-            builder.setUnderlineThickness(style.get("underlineThickness"))
-        if general:  # Version priority: `head`.fontRevision < *specified*
-            builder.setVersion(self.font["head"].fontRevision)
-            builder.setVersion(general.get("version"))
-            builder.setROS(general.get("cidRegistry"), 
-                general.get("cidOrdering"), 
-                general.get("cidSupplement")
-                )
         builder.applyToCFFtable(cffT)
         return
 
