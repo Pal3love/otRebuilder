@@ -101,8 +101,6 @@ class Initializer(Workers.Worker):
     def removeGasp(self):
         if not self.isTrueType():
             self.jobs.rebuild_gasp = False
-            # print("WARNING: Invalid TrueType font. --smoothRendering is now ignored.", file = sys.stderr)
-            # return
         if self.font.has_key("gasp"):
             del self.font["gasp"]
         return
@@ -112,8 +110,7 @@ class Initializer(Workers.Worker):
         if not self.isTrueType():
             self.jobs.init_removeHinting = False
             self.jobs.rebuild_gasp = False
-            # print("WARNING: Invalid TrueType font. --removeHinting is now ignored.", file = sys.stderr)
-            # return
+            self.jobs.rebuild_prep = False
         if self.font.has_key("glyf"):
             glyf = self.font["glyf"]
             for key in glyf.keys():
@@ -138,8 +135,6 @@ class Initializer(Workers.Worker):
     def removeBitmap(self):
         if not self.isTrueType():
             self.jobs.init_removeBitmap = False
-            # print("WARNING: Invalid TrueType font. --removeBitmap is now ignored.", file = sys.stderr)
-            # return
         if self.font.has_key("EBDT"):
             del self.font["EBDT"]
         if self.font.has_key("EBLC"):

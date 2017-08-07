@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.3.0, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.3.1, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -48,8 +48,8 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.3.0, powered by fontT
             em (UPM) value. A typical UPM for TrueType is 2048. Glyph
             bounding boxes and min/max values will be automatically
             recalculated. This option would be ignored if a TrueType
-            font is specified. Please rebuild `GPOS` table after
-            conversion if UPM is changed.
+            font is specified. Please rebuild `GPOS`, `JSTF` and `MATH`
+            table after conversion if UPM is changed.
         --refresh: Re-compile all font tables.
         --recalculate: Recalculate glyph bounding boxes, min/max values
             and Unicode ranges.
