@@ -43,9 +43,11 @@ class OS2f2Worker(Worker):
         return fsSelection
 
     @staticmethod
-    def recalcXAvgCharWidth(hmtx):
+    def recalcXAvgCharWidth(hmtx, isMonospaced = False):
         if not hmtx:
             return 0
+        if isMonospaced:
+            return hmtx.metrics["space"][0]
         count = 0
         sumWidth = 0
         for glyfName in hmtx.metrics.keys():

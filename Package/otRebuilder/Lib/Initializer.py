@@ -57,8 +57,10 @@ class Initializer(Workers.Worker):
         else:
             return False
 
-    def hasCFF2(self):
+    def isVariableFont(self):
         if self.font.has_key("CFF2"):
+            return True
+        elif self.font.has_key("gvar"):
             return True
         else:
             return False
@@ -196,7 +198,7 @@ class Initializer(Workers.Worker):
             OS2f2.sxHeight = 0
             OS2f2.sCapHeight = 0
             OS2f2.usDefaultChar = 0
-            OS2f2.usBreakChar = 0
+            OS2f2.usBreakChar = 0x20  # "space"
             OS2f2.usMaxContext = 0
         if OS2f2.version > 4:
             OS2f2.usLowerOpticalPointSize = 0

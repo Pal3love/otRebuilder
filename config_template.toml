@@ -1,5 +1,5 @@
 # -- OpenType Rebuilder Configuration File --
-# -- Version: 1.2 --
+# -- Version: 1.3 --
 # -- Format: TOML --
 # -- Encoding: UTF-8(with/without BOM) --
 # -- Almost all options are **optional**. Just comment or delete any unnecessary options.--
@@ -98,22 +98,18 @@ licenseURL = 'http://www.cnnic.net.cn/'
 
 
 # [Metrics]
-
 # Horizontal (`hhea`) metrics
 # hheaAscender = 880
 # hheaDescender = -120
 # hheaLineGap = 1000
-
 # Vertical (`vhea`) metrics
 # vheaAscender = 500
 # vheaDescender = -500
 # vheaLineGap = 1000
-
 # Typo metrics
 # typoAscender = 880
 # typoDescender = -120
 # typoLineGap = 1000
-
 # Windows metrics
 # winAscender = 880
 # winDescender = -120
@@ -149,11 +145,13 @@ widthScale = 5
 # No style-linking = 0, linking regular = 1,
 # Linking bold = 2, linking italic = 3, linking boldItalic = 4.
 # To ensure style-linked fonts work, please properly specify their families and subfamilies.
+# For font families with **only single subfamily**, please set it to 1.
 # styleLink = 0
 
 # Useful for IDE font selectors such as MS Visual Studio.
 # For non-monospaced fonts please set it to false.
 # isMonospaced = false
+# monoLatinWidth = 500
 
 # Negative means leaning to the right, right for most italic/oblique fonts.
 # italicAngle = -12.0
@@ -167,11 +165,10 @@ widthScale = 5
 # Windows uses the following classifications for font fallbacks.
 # Sample values are retrieved from Arial.
 
-[Style.IBM]
+# [Style.IBM]
 # IBM classification guideline: https://www.microsoft.com/typography/otspec/ibmfc.htm
 # ibmStyleClass = 8
 # ibmStyleSubclass = 5
-
 
 # [Style.PANOSE]
 # Monotype PANOSE guideline: http://monotype.de/services/pan1

@@ -13,6 +13,7 @@ from time import mktime
 from datetime import datetime
 from fontTools.misc.timeTools import epoch_diff
 from fontTools.ttLib import newTable
+from fontTools.ttLib.tables.ttProgram import Program
 
 from otRebuilder.Lib import Builders
 from otRebuilder.Lib import Constants
@@ -31,6 +32,15 @@ class Rebuilder(Workers.Worker):
         gasp.version = 1
         gasp.gaspRange = {65535: 10}
         self.font["gasp"] = gasp
+        return
+
+    # Create global instruction table with basic rendering settings
+    def rebuildPrep(self):
+        hintProg = Program()
+        hintProg.fromBytecode([184, 1, 255, 133, 184, 0, 4, 141])
+        prep = newTable("prep")
+        prep.program = hintProg
+        self.font["prep"] = prep
         return
 
     def rebuildDSIG(self):
@@ -331,6 +341,7 @@ class Rebuilder(Workers.Worker):
             useTypoMetrics = style.get("useTypoMetrics")
             forcePreferredFamily = style.get("forcePreferredFamily")
             isMonospaced = style.get("isMonospaced")
+            monoLatinWidth = style.get("monoLatinWidth")
             ibmClass = style.get("IBM")
             panose = style.get("PANOSE")
             if widthScale in range(1, 10):
@@ -399,6 +410,14 @@ class Rebuilder(Workers.Worker):
                     OS2f2T.version = 4
             if isinstance(isMonospaced, bool):
                 if isMonospaced:
+                    # Update average char width
+                    if (isinstance(monoLatinWidth, int) or isinstance(monoLatinWidth, float)):
+                        OS2f2T.xAvgCharWidth = int(abs(monoLatinWidth))
+                    elif self.jobs.general_recalc:
+                        OS2f2T.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"], True)
+                    else:
+                        pass
+                    # Update PANOSE
                     if OS2f2T.panose.bFamilyType in [2, 4]:
                         OS2f2T.panose.bProportion = 9
                     elif OS2f2T.panose.bFamilyType in [3, 5]:
@@ -406,12 +425,14 @@ class Rebuilder(Workers.Worker):
                     else:
                         pass
                 else:
-                    if OS2f2T.panose.bFamilyType in [3, 5]:
-                        OS2f2T.panose.bProportion = 2
-                    elif widthScale in range(1, 10):
-                        self.__updateOS2f2_width2Panose(widthScale, OS2f2T.panose)
-                    elif OS2f2T.panose.bFamilyType == 2:
+                    # Update average char width
+                    if self.jobs.general_recalc:
+                        OS2f2T.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"], False)
+                    # Update PANOSE
+                    if OS2f2T.panose.bFamilyType == 2:
                         OS2f2T.panose.bProportion = 3
+                    elif OS2f2T.panose.bFamilyType in [3, 5]:
+                        OS2f2T.panose.bProportion = 2
                     elif OS2f2T.panose.bFamilyType == 4:
                         OS2f2T.panose.bProportion = 5
                     else:
@@ -419,7 +440,7 @@ class Rebuilder(Workers.Worker):
             if ibmClass:
                 styleClass = OS2f2T.sFamilyClass>>8
                 styleSubclass = OS2f2T.sFamilyClass & 0b11111111
-                if ibmClass.get("ibmStyleClass") in range(0, 13):
+                if ibmClass.get("ibmStyleClass") in range(0, 16):
                     styleClass = ibmClass.get("ibmStyleClass")
                 if ibmClass.get("ibmStyleSubclass") in range(0, 16):
                     styleSubclass = ibmClass.get("ibmStyleSubclass")

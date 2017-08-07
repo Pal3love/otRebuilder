@@ -1,8 +1,8 @@
 # -- OpenType Rebuilder 配置文件 --
-# -- 版本: 1.2 --
+# -- 版本: 1.3 --
 # -- 格式: TOML --
 # -- 编码: UTF-8（有无 BOM 均可） --
-# -- 配置文件中的所有项都是可选的，打上注释或者干脆删掉它们都可以。--
+# -- 配置文件中的所有项都是**可选的**，打上注释或者干脆删掉它们都可以。--
 
 
 [General]
@@ -97,24 +97,20 @@ licenseURL = 'http://www.cnnic.net.cn/'
 
 
 
-# 上升部、下降部、行距设置
+# 上升部、下降部、行间距设置
 # [Metrics]
-
 # 横排尺寸（`hhea` 表）
 # hheaAscender = 880    # `hhea` 上升部
 # hheaDescender = -120    # `hhea` 下降部
-# hheaLineGap = 1000    # `hhea` 行距
-
+# hheaLineGap = 1000    # `hhea` 行间距
 # 竖排尺寸（`vhea` 表）
 # vheaAscender = 500    # `vhea` 上升部
 # vheaDescender = -500    # `vhea` 下降部
-# vheaLineGap = 1000    # `vhea` 行距
-
+# vheaLineGap = 1000    # `vhea` 行间距
 # Typo 尺寸（`OS/2` 表）
 # typoAscender = 880    # Typo 上升部
 # typoDescender = -120    # Typo 下降部
-# typoLineGap = 1000    # Typo 行距
-
+# typoLineGap = 1000    # Typo 行间距
 # Windows 尺寸（`OS/2` 表）
 # winAscender = 880    # Windows 上升部
 # winDescender = -120    # Windows 下降部
@@ -150,11 +146,13 @@ widthScale = 5    # 宽窄值
 # 无链接 = 0, 链接常规体 = 1, 链接粗体 = 2, 链接斜体 = 3, 链接粗斜体 = 4。
 # 子族链接常见于西文字体，很少有制作子族链接的中日韩字体。
 # 为了确保字族链接成功，请为它们的家族/子族名填写合适的值。
+# 对于**仅有一个子族的字体家族**，请将该值设为 1。
 styleLink = 0    # 子族链接
 
 # 该项控制字体是否被识别为等宽（monospaced）字体。等宽字体常见于代码编辑器当中。
 # 对于非等宽字体（绝大多数），请关闭该项。
 # isMonospaced = false    # 等宽字体
+# monoLatinWidth = 500    # 等宽西文字长
 
 # 负值代表向右倾斜，即绝大多数西文斜体的倾斜方向。
 # italicAngle = -12.0    # 斜体倾斜角
@@ -168,11 +166,10 @@ styleLink = 0    # 子族链接
 # Windows 根据以下分类值挑选风格最为接近的字体作为回退（fallback）字体。
 # 示例值取自 Arial 字体。
 
-[Style.IBM]
+# [Style.IBM]
 # IBM 字体分类: https://www.microsoft.com/typography/otspec/ibmfc.htm
 # ibmStyleClass = 8
 # ibmStyleSubclass = 5
-
 
 # [Style.PANOSE]
 # 蒙纳 PANOSE 字体分类: http://monotype.de/services/pan1

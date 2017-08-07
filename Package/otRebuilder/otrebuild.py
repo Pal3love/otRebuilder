@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.2.5, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.3.0, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -43,10 +43,13 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.2.5, powered by fontT
         -o <outputFont>: Specify the output font file.
         -c <configTOML>: Specify the configuration file. It is an
             TOML-format text file and it must be UTF-8 encoded.
-        --otf2ttf: For CFF-based font only. Convert CFF-based font into
-            a TrueType font. Glyph bounding boxes and min/max values
-            will be automatically recalculated. It would be ignored if a
-            TrueType font is specified.
+        --otf2ttf <targetUPM>: For CFF-based font only. Convert a 
+            CFF-based font into TrueType font with the given units per
+            em (UPM) value. A typical UPM for TrueType is 2048. Glyph
+            bounding boxes and min/max values will be automatically
+            recalculated. This option would be ignored if a TrueType
+            font is specified. Please rebuild `GPOS` table after
+            conversion if UPM is changed.
         --refresh: Re-compile all font tables.
         --recalculate: Recalculate glyph bounding boxes, min/max values
             and Unicode ranges.
@@ -71,15 +74,14 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.2.5, powered by fontT
         --O1: Mild optimization, as a shortcut to --smoothRendering,
             --allowUpgrade, and --dummySignature.
         --O2: Typical optimization, as a shortcut to --recalculate, 
-            --removeGlyphNames, --smoothRendering, --rebuildMapping,
-            --allowUpgrade, and --dummySignature.
+            --smoothRendering, --rebuildMapping, --allowUpgrade,
+            and --dummySignature.
         --O3: Comprehensive optimization for release, as a shortcut to
-            --refresh, --recalculate, --removeGlyphNames,
-            --removeBitmap, --removeHinting, --rebuildMapping,
-            --allowUpgrade, and --dummySignature.
+            --refresh, --recalculate, --removeBitmap, --removeHinting,
+            --rebuildMapping, --allowUpgrade, and --dummySignature.
 
     ** Windows legacy symbol fonts are currently not supported.
-    ** Variable fonts and CFF2-based fonts are currently not supported.
+    ** Variable fonts are currently not supported.
 """
 
 
@@ -107,7 +109,7 @@ def parseArgs():
     parser.add_argument("inputFont", metavar = "inputFont", help = argparse.SUPPRESS)
     parser.add_argument("-o", metavar = "outputFont", help = argparse.SUPPRESS)
     parser.add_argument("-c", metavar = "configTOML", help = argparse.SUPPRESS)
-    parser.add_argument("--otf2ttf", action="store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--otf2ttf", metavar = "targetUPM", type = int, help = argparse.SUPPRESS)
     parser.add_argument("--refresh", action="store_true", help = argparse.SUPPRESS)
     parser.add_argument("--recalculate", action="store_true", help = argparse.SUPPRESS)
     parser.add_argument("--removeGlyphNames", action="store_true", help = argparse.SUPPRESS)
@@ -136,7 +138,6 @@ def parseArgs():
         args.dummySignature = True
     elif args.O2:
         args.recalculate = True
-        args.removeGlyphNames = True
         args.rebuildMapping = True
         args.smoothRendering = True
         args.allowUpgrade = True
@@ -144,7 +145,6 @@ def parseArgs():
     elif args.O3:
         args.refresh = True
         args.recalculate = True
-        args.removeGlyphNames = True
         args.removeBitmap = True
         args.removeHinting = True
         args.rebuildMapping = True
@@ -154,6 +154,7 @@ def parseArgs():
     if args.removeHinting:
         jobs.init_removeHinting = True
         jobs.rebuild_gasp = True
+        jobs.rebuild_prep = True
     elif args.smoothRendering:
         jobs.rebuild_gasp = True
     else:
@@ -195,8 +196,9 @@ class Jobs(object):
         self.rebuild_allowUpgrade = False
         self.rebuild_cmap = False
         self.rebuild_gasp = False
+        self.rebuild_prep = False
         self.rebuild_DSIG = False
-        self.convert_otf2ttf = False
+        self.convert_otf2ttf = None
 
 
 def processIO(paths):
@@ -294,8 +296,8 @@ def doInits(ttfontObj, jobsObj):
     if init.isSymbolFont():
         print("ERROR: Windows legacy symbol font detected. It is currently not supported.", file = sys.stderr)
         sys.exit(1)
-    if init.hasCFF2():
-        print("ERROR: CFF2-based variable font detected. It is currently not supported.", file = sys.stderr)
+    if init.isVariableFont():
+        print("ERROR: Variable font detected. It is currently not supported.", file = sys.stderr)
         sys.exit(1)
     if jobsObj.init_refreshTables:
         init.refreshTables()
@@ -331,6 +333,8 @@ def doRebuilds(ttfontObj, jobsObj, configDict):
     rebuilder = Rebuilder.Rebuilder(ttfontObj, jobsObj, configDict)
     if jobsObj.rebuild_gasp:
         rebuilder.rebuildGasp()
+    if jobsObj.rebuild_prep:
+        rebuilder.rebuildPrep()
     if jobsObj.rebuild_DSIG:
         rebuilder.rebuildDSIG()
     if jobsObj.rebuild_cmap:
@@ -342,18 +346,21 @@ def doRebuilds(ttfontObj, jobsObj, configDict):
 
 def doConverts(ttfontObj, jobsObj):
     converter = Converter.Converter(ttfontObj, jobsObj)
-    if jobsObj.convert_otf2ttf:
+    targetUPM = jobsObj.convert_otf2ttf
+    if targetUPM:
         if jobsObj.init_removeGlyphNames:
             converter.otf2ttf(
-                Constants.OTF2TTF_DFLT_MAX_ERR, 
+                Constants.OTF2TTF_DFLT_MAX_ERR,
                 3.0,  # Ignore any stored glyph names.
-                Constants.OTF2TTF_DFLT_REVERSE
+                Constants.OTF2TTF_DFLT_REVERSE,
+                targetUPM
                 )
         else:
             converter.otf2ttf(
-                Constants.OTF2TTF_DFLT_MAX_ERR, 
-                Constants.OTF2TTF_DFLT_POST_FORMAT, 
-                Constants.OTF2TTF_DFLT_REVERSE
+                Constants.OTF2TTF_DFLT_MAX_ERR,
+                Constants.OTF2TTF_DFLT_POST_FORMAT,
+                Constants.OTF2TTF_DFLT_REVERSE,
+                targetUPM
                 )
     return
 

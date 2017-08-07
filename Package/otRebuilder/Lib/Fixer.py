@@ -55,7 +55,10 @@ class Fixer(Workers.Worker):
         OS2f2.fsType &= 0b1110
         if self.jobs.general_recalc:
             OS2f2.recalcUnicodeRanges(self.font)
-            OS2f2.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"])
+            if OS2f2.panose.bFamilyType == 2 and OS2f2.panose.bProportion == 9:  # monospaced font
+                OS2f2.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"], True)
+            else:
+                OS2f2.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"], False)
         if OS2f2.version < 4:
             OS2f2.fsSelection &= 0b1100001
         else:
