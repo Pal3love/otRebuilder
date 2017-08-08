@@ -85,24 +85,26 @@ class Rebuilder(Workers.Worker):
                 continue
         # Build all from top to bottom.
         # Priority ranking: macLastResort > winFull > macFull > winBMP > macBMP > macRoman
-        if sourceSub[5]:  # macLastResort, 4 subtables in total
+        # *MS Office 2011 for Mac* sometimes overrides macRoman to all subtables.
+        # In case of that, we temporarily turn it off.
+        if sourceSub[5]:  # macLastResort, 4->3 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildfmt13sFromLastResort(sourceSub[5]))
-            newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[5]))
-        elif sourceSub[1]:  # winFull, 5 subtables in total
+            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[5]))
+        elif sourceSub[1]:  # winFull, 5->4 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildUnicodeAllFromFull(sourceSub[1]))
-            newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[1]))
-        elif sourceSub[4]:  # macFull, 5 subtables in total
+            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[1]))
+        elif sourceSub[4]:  # macFull, 5->4 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildUnicodeAllFromFull(sourceSub[4]))
-            newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[4]))
-        elif sourceSub[0]:  # winBMP, 3 subtables in total
+            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[4]))
+        elif sourceSub[0]:  # winBMP, 3->2 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSub[0]))
-            newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[0]))
-        elif sourceSub[3]:  # macBMP, 3 subtables in total
+            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[0]))
+        elif sourceSub[3]:  # macBMP, 3->2 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSub[3]))
-            newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[3]))
-        elif sourceSub[2]:  # macRoman, 3 subtables in total
+            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[3]))
+        elif sourceSub[2]:  # macRoman, 3->2 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildFmt4sFromMacRoman(sourceSub[2]))
-            newSub.append(sourceSub[2])
+            # newSub.append(sourceSub[2])
         else:
             pass
         newSub.extend(unsupported)
@@ -364,7 +366,7 @@ class Rebuilder(Workers.Worker):
                 OS2f2T.fsSelection &= ~0b1111110  # Clear regular, bold and legacy bits
                 if weightScale == 4:
                     OS2f2T.fsSelection |= 1<<6
-                elif weightScale > 5:
+                elif weightScale > 6:
                     OS2f2T.fsSelection |= 1<<5
                 else:
                     pass
@@ -568,12 +570,12 @@ class Rebuilder(Workers.Worker):
         cffRecords = Workers.NameWorker.getRecordsFromCFF(self.font.get("CFF "))
         cffPSname = None
         if cffRecords:
-            cffPSname = cffRecords[3]
+            cffPSname = cffRecords[3].decode()
 
         # Basic name records's initialization
         # From here the English font family always exists.
         enFamily = en.get("fontFamily")
-        enSubfamily = "Regular"  # Default English subfamily
+        enSubfamily = u"Regular"  # Default English subfamily
         enLgcFmly = enFamily  # Default English legacy family
         enWWS = [None, None, None]  # [enWidth, enWeight, enItalic]
         enFullName = enPSname = enVersionStr = enUniqueID = None
@@ -586,12 +588,12 @@ class Rebuilder(Workers.Worker):
             italicAngle = style.get("italicAngle")
             # Try to get width, weight and italic string.
             if widthScale in range(1, 10) and widthScale != 5:
-                enWWS[0] = Constants.ABBREVIATED_WIDTHS[widthScale - 1]
+                enWWS[0] = Constants.ABBREVIATED_WIDTHS[widthScale - 1].decode()
             if weightScale in range(1, 11):
-                enWWS[1] = Constants.ABBREVIATED_WEIGHTS[weightScale - 1]
+                enWWS[1] = Constants.ABBREVIATED_WEIGHTS[weightScale - 1].decode()
             if (isinstance(italicAngle, float) or isinstance(italicAngle, int)) and \
                 italicAngle != 0:
-                enWWS[2] = "Italic"
+                enWWS[2] = u"Italic"
             # Fill English subfamily with strings from above
             isFirst = True
             for item in enWWS:
@@ -600,28 +602,29 @@ class Rebuilder(Workers.Worker):
                         isFirst = False
                         enSubfamily = item
                     else:
-                        enSubfamily += " " + item
+                        enSubfamily += u" " + item
             # Add style-link and generate English legacy family
+            # Version 1.3.4 update: now style-link only affects Win platform.
             if enWWS[0]:  # enWidth
-                enLgcFmly += " " + enWWS[0]
+                enLgcFmly += u" " + enWWS[0]
             if slCode == Constants.STYLELINK_REGULAR:
                 builder.addStylelink(slCode)
                 if weightScale and weightScale != 4:
-                    enLgcFmly += " " + enWWS[1]  # enWeight
+                    enLgcFmly += u" " + enWWS[1]  # enWeight
             elif slCode == Constants.STYLELINK_BOLD:
                 builder.addStylelink(slCode)
             elif slCode == Constants.STYLELINK_ITALIC:
                 builder.addStylelink(slCode)
                 if weightScale:
-                    enLgcFmly += " " + enWWS[1]
+                    enLgcFmly += u" " + enWWS[1]
             elif slCode == Constants.STYLELINK_BOLDITALIC:
                 builder.addStylelink(slCode)
             else:
                 builder.addStylelink(Constants.STYLELINK_NONE)
-                if enWWS[1]:
-                    enLgcFmly += " " + enWWS[1]
+                if enWWS[1]:  # enWeight
+                    enLgcFmly += u" " + enWWS[1]
                 if enWWS[2]:  # enItalic
-                    enLgcFmly += " " + enWWS[2]
+                    enLgcFmly += u" " + enWWS[2]
         else:
             builder.addStylelink(Constants.STYLELINK_NONE)
 
@@ -629,7 +632,7 @@ class Rebuilder(Workers.Worker):
         if self.__loadUstr(en.get("fontSubfamily")):
             enSubfamily = self.__loadUstr(en.get("fontSubfamily"))
             # Generate English legacy family from enSubfamily and style-links
-            enLgcFmly = enFamily + " " + enSubfamily
+            enLgcFmly = enFamily + u" " + enSubfamily
             if style:
                 slCode = style.get("styleLink")
                 if slCode in [2, 4]:
@@ -643,20 +646,20 @@ class Rebuilder(Workers.Worker):
                         enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
                 else:
                     pass
-            while enLgcFmly != enLgcFmly.replace("  ", " "):
-                enLgcFmly = enLgcFmly.replace("  ", " ")
+            while enLgcFmly != enLgcFmly.replace(u"  ", u" "):
+                enLgcFmly = enLgcFmly.replace(u"  ", u" ")
             enLgcFmly = enLgcFmly.strip()
 
         # Deal with fullName with priority below:
         # family + subfamily < *specified*
-        enFullName = enFamily + " " + enSubfamily
+        enFullName = enFamily + u" " + enSubfamily
         if self.__loadUstr(en.get("fontFullName")):
             enFullName = self.__loadUstr(en.get("fontFullName"))
 
         # Deal with psName with priority below:
         # fullName < cffPSname < *specified*
         # Incompatible chars will be discarded
-        enPSname = enFamily.replace(" ", "") + "-" + enSubfamily.replace(" ", "")
+        enPSname = enFamily.replace(u" ", u"") + u"-" + enSubfamily.replace(u" ", u"")
         if cffPSname:
             enPSname = cffPSname
         if self.__loadUstr(en.get("postScriptName")):
@@ -672,24 +675,26 @@ class Rebuilder(Workers.Worker):
                 enVersionStr = "Version " + "%.2f" % abs(versionNum)
         if self.__loadUstr(en.get("versionString")):
             enVersionStr = self.__loadUstr(en.get("versionString"))
-        if enVersionStr.find(".") == -1:
-            enVersionStr += ".00"
 
         # Deal with uniqueID with priority below:
         # fullName + versionStr < *specified*
-        enUniqueID = enFullName + "; " + enVersionStr
+        enUniqueID = enFullName + u"; " + enVersionStr
         if self.__loadUstr(en.get("uniqueID")):
             enUniqueID = self.__loadUstr(en.get("uniqueID"))
 
         # Build English part of `name`
-        builder.addEngName(enLgcFmly, 1)        # name ID 1
-        # name ID 2 has been already added
+        # Family and subfamily
+        builder.addMacNameEx(enFamily, 1, 0)
+        builder.addMacNameEx(enSubfamily, 2, 0)
+        builder.addWinNameEx(enLgcFmly, 1, 0x0409)
+        # name ID 2 has been already added by addStylelink()
+        builder.addWinNameEx(enFamily, 16, 0x0409)
+        builder.addWinNameEx(enSubfamily, 17, 0x0409)
+        # Other stuff
         builder.addFontUniqueID(enUniqueID)     # name ID 3
         builder.addEngName(enFullName, 4)       # name ID 4
         builder.addVersionString(enVersionStr)  # name ID 5
         builder.addPostScriptName(enPSname)     # name ID 6
-        builder.addEngName(enFamily, 16)        # name ID 16
-        builder.addEngName(enSubfamily, 17)     # name ID 17
         if self.__loadUstr(en.get("copyright")):
             builder.addEngName(en["copyright"], 0)
         if self.__loadUstr(en.get("trademark")):
@@ -714,43 +719,56 @@ class Rebuilder(Workers.Worker):
             if langTag == "en":
                 continue
             else:
-                self.__rebuildName_addMultiLang(langTag, builder)
+                self.__rebuildName_addMultiLang(enSubfamily, langTag, builder)
 
         self.font["name"] = builder.build(self.font["cmap"])
         return
 
-    def __rebuildName_addMultiLang(self, langTag, nameTableBuilder):
+    def __rebuildName_addMultiLang(self, enSubfamily, langTag, nameTableBuilder):
         lang = self.config["Name"][langTag]
         builder = nameTableBuilder
         style = self.config.get("Style")
-        lgcFmly = None
-        fullName = None
+        lgcFmly = lgcSubfmly = fullName = None
         family = self.__loadUstr(lang.get("fontFamily"))
-        subfamily = self.__loadUstr(lang.get("fontSubfamily"))
-        # Add style-linking string for multilingual parts in exclusive case of *MS Office 2011 for Mac*
+
+        # To be compatible with *MS Office 2011 for Mac*, multilingual subfamilies must exist.
+        if self.__loadUstr(lang.get("fontSubfamily")):
+            subfamily = self.__loadUstr(lang.get("fontSubfamily"))
+        else:  # Set subfamily to English for fallback
+            subfamily = enSubfamily
+
         if style.get("styleLink") in range(1, 5):
             lgcFmly = family  # family might be None
-            builder.addName(Constants.LEGACY_WIN_STYLES[style.get("styleLink") - 1].decode(), 2, langTag)
+            slCode = style.get("styleLink")
+            lgcSubfmly = Constants.LEGACY_WIN_STYLES[slCode - 1].decode()
         elif family and subfamily:
             lgcFmly = family + u" " + subfamily
-            builder.addName(u"Regular", 2, langTag)
+            lgcSubfmly = u"Regular"
         else:
             lgcFmly = family
-            builder.addName(u"Regular", 2, langTag)
+            lgcSubfmly = u"Regular"
+
         if self.__loadUstr(lang.get("fontFullName")):
             fullName = lang["fontFullName"]
         elif family and subfamily:
             fullName = family + u" " + subfamily
         else:
             pass
+
+        # Build multilingual part of `name`
+        # Subfamily, the mandatory stuff
+        addMacName(subfamily, 2, langTag)
+        addWinNames(lgcSubfmly, 2, langTag)
+        addWinNames(subfamily, 17, langTag)
+        # Family and legacy family for Win
         if lgcFmly:
-            builder.addName(lgcFmly, 1, langTag)
+            builder.addWinNames(lgcFmly, 1, langTag)
+        if family:
+            addMacName(family, 1, langTag)
+            addWinNames(family, 16, langTag)
+        # Other stuff
         if fullName:
             builder.addName(fullName, 4, langTag)
-        if family:
-            builder.addName(family, 16, langTag)
-        if subfamily:
-            builder.addName(subfamily, 17, langTag)
         if self.__loadUstr(lang.get("copyright")):
             builder.addName(lang["copyright"], 0, langTag)
         if self.__loadUstr(lang.get("trademark")):

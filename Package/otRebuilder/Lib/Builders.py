@@ -353,15 +353,20 @@ class NameTableBuilder(object):
         return
 
     # Name ID 2, English US
+    # On Mac, name ID 2 should be treated as ID 17.
     def addStylelink(self, stylelinkCode):
         if stylelinkCode == Constants.STYLELINK_BOLD:
-            self.addEngName("Bold", 2)
+            # self.addEngName("Bold", 2)
+            self.addWinNameEx(u"Bold", 2, 0x0409)
         elif stylelinkCode == Constants.STYLELINK_ITALIC:
-            self.addEngName("Italic", 2)
+            # self.addEngName("Italic", 2)
+            self.addWinNameEx(u"Italic", 2, 0x0409)
         elif stylelinkCode == Constants.STYLELINK_BOLDITALIC:
-            self.addEngName("Bold Italic", 2)
+            # self.addEngName("Bold Italic", 2)
+            self.addWinNameEx(u"Bold Italic", 2, 0x0409)
         else:
-            self.addEngName("Regular", 2)
+            # self.addEngName("Regular", 2)
+            self.addWinNameEx(u"Regular", 2, 0x0409)
         return
 
     # Name ID 3, English US

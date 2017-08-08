@@ -148,8 +148,8 @@ class Fixer(Workers.Worker):
                 builder.addWinNameEx(tmpWinRec.string, tmpWinRec.nameID, tmpWinRec.langID)
         for namRec in winNamRecs:
             tmpMacRec = Workers.NameWorker.winName2Mac(namRec)
-            if tmpMacRec is None:
-                continue
+            if tmpMacRec is None or tmpMacRec.nameID in [16, 17]:
+                continue  # The Mac platform doesn't need preferred family/subfamily.
             builder.addMacNameEx(tmpMacRec.string, tmpMacRec.nameID, tmpMacRec.langID)
         # Update the `name` table with `cmap` consistency
         name = builder.build(cmap)
@@ -193,24 +193,6 @@ class Fixer(Workers.Worker):
                     self.__fixCmap_genNextSub(sourceSubtables[level])
         return
 
-    def __fixCmap_buildNew(self, sourceSubtables):
-        newSubtables = []
-        if sourceSubtables[0]:  # uniFull
-            newSubtables.extend(
-                Workers.CmapWorker.subtables_buildFmt12sFromFull(sourceSubtables[0])
-                )
-        if sourceSubtables[1]:  # uniBMP
-            newSubtables.extend(
-                Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSubtables[1])
-                )
-        if sourceSubtables[2]:  # macRoman
-            newSubtables.append(sourceSubtables[2])
-        if sourceSubtables[3] and not sourceSubtables[1]:  # uniBMPfromMacRoman
-            newSubtables.extend(
-                Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSubtables[3])
-                )
-        return newSubtables
-
     def __fixCmap_genNextSub(self, cmapSubtable):
         if cmapSubtable is None:  # If current layer is empty
             return None  # Generate None as well
@@ -225,6 +207,27 @@ class Fixer(Workers.Worker):
             return self.__fixCmap_mac2Bmp(cmapSubtable)
         else:
             return None
+
+    def __fixCmap_buildNew(self, sourceSubtables):
+        newSubtables = []
+        if sourceSubtables[0]:  # uniFull
+            newSubtables.extend(
+                Workers.CmapWorker.subtables_buildFmt12sFromFull(sourceSubtables[0])
+                )
+        if sourceSubtables[1]:  # uniBMP
+            newSubtables.extend(
+                Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSubtables[1])
+                )
+        if sourceSubtables[2]:  # macRoman
+            # *MS Office 2011 for Mac* sometimes overrides macRoman to all subtables.
+            # In case of that, we temporarily turn it off.
+            # newSubtables.append(sourceSubtables[2])
+            pass
+        if sourceSubtables[3] and not sourceSubtables[1]:  # uniBMPfromMacRoman
+            newSubtables.extend(
+                Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSubtables[3])
+                )
+        return newSubtables
 
     def __fixCmap_full2Bmp(self, cmapSubFull):
         subtables = Workers.CmapWorker.subtables_buildUnicodeAllFromFull(cmapSubFull)

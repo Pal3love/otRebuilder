@@ -238,22 +238,25 @@ class Initializer(Workers.Worker):
             builder.addEngName(copyright, 0)  # Copyright, name ID 0
         if trademark:
             builder.addEngName(trademark, 7)  # Trademark, name ID 7
+        # Add Mac family & subfamily first because on Mac there are no historical issues for them.
+        builder.addMacNameEx(family.decode(), 1, 0)
+        builder.addMacNameEx(subfamily.decode(), 2, 0)
+        # Add Win family & subfamily then.
         if subfamily in Constants.LEGACY_WIN_STYLES:
-            builder.addEngName(family, 1)  # Font family, name ID 1
-            builder.addEngName(subfamily, 2)  # Font subfamily, name ID 2
-        elif "Italic" in subfamily:  # Non-legacy italic style
-            winLegacyFamily = family + " " + subfamily.replace(" Italic", "")
-            builder.addEngName(winLegacyFamily, 1)  # Font family, name ID 1
-            builder.addEngName("Italic", 2)  # Font subfamily, name ID 2
-            builder.addEngName(family, 16)  # Font preferred family, name ID 16
-            builder.addEngName(subfamily, 17)  # Font preferred subfamily, name ID 17
-        else:  # Non-legacy regular style
-            winLegacyFamily = family + " " + subfamily
-            builder.addEngName(winLegacyFamily, 1)  # Font family, name ID 1
-            builder.addEngName("Regular", 2)  # Font subfamily, name ID 2
-            builder.addEngName(family, 16)  # Font preferred family, name ID 16
-            builder.addEngName(subfamily, 17)  # Font preferred subfamily, name ID 17
-        builder.addEngName(fullName, 4)  # Font full name, name ID 4
+            builder.addWinNameEx(family.decode(), 1, 0x0409)
+            builder.addWinNameEx(subfamily.decode(), 2, 0x0409)
+        else:
+            builder.addWinNameEx(family.decode(), 16, 0x0409)
+            builder.addWinNameEx(subfamily.decode(), 17, 0x0409)
+            if "Italic" in subfamily:  # Non-legacy italic style
+                winLegacyFamily = family + " " + subfamily.replace(" Italic", "")
+                builder.addWinNameEx(winLegacyFamily.decode(), 1, 0x0409)
+                builder.addWinNameEx(u"Italic", 2, 0x0409)
+            else:  # Non-legacy regular style, such as "Light"
+                winLegacyFamily = family + " " + subfamily
+                builder.addWinNameEx(winLegacyFamily.decode(), 1, 0x0409)
+                builder.addWinNameEx(u"Regular", 2, 0x0409)
+        builder.addEngName(fullName, 4)
         builder.addPostScriptName(psName)
         builder.addFontUniqueID(uniqueID)
         builder.addVersionString(versionStr)
