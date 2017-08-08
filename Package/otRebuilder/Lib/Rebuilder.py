@@ -734,7 +734,7 @@ class Rebuilder(Workers.Worker):
         # To be compatible with *MS Office 2011 for Mac*, multilingual subfamilies must exist.
         if self.__loadUstr(lang.get("fontSubfamily")):
             subfamily = self.__loadUstr(lang.get("fontSubfamily"))
-        else:  # Set subfamily to English for fallback
+        else:  # Set subfamily from English for fallback
             subfamily = enSubfamily
 
         if style.get("styleLink") in range(1, 5):
@@ -757,15 +757,15 @@ class Rebuilder(Workers.Worker):
 
         # Build multilingual part of `name`
         # Subfamily, the mandatory stuff
-        addMacName(subfamily, 2, langTag)
-        addWinNames(lgcSubfmly, 2, langTag)
-        addWinNames(subfamily, 17, langTag)
+        builder.addMacName(subfamily, 2, langTag)
+        builder.addWinNames(lgcSubfmly, 2, langTag)
+        builder.addWinNames(subfamily, 17, langTag)
         # Family and legacy family for Win
         if lgcFmly:
             builder.addWinNames(lgcFmly, 1, langTag)
         if family:
-            addMacName(family, 1, langTag)
-            addWinNames(family, 16, langTag)
+            builder.addMacName(family, 1, langTag)
+            builder.addWinNames(family, 16, langTag)
         # Other stuff
         if fullName:
             builder.addName(fullName, 4, langTag)
