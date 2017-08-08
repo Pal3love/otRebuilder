@@ -727,12 +727,16 @@ class Rebuilder(Workers.Worker):
         fullName = None
         family = self.__loadUstr(lang.get("fontFamily"))
         subfamily = self.__loadUstr(lang.get("fontSubfamily"))
+        # Add style-linking string for multilingual parts in exclusive case of *MS Office 2011 for Mac*
         if style.get("styleLink") in range(1, 5):
             lgcFmly = family  # family might be None
+            builder.addName(Constants.LEGACY_WIN_STYLES[style.get("styleLink") - 1].decode(), 2, langTag)
         elif family and subfamily:
             lgcFmly = family + u" " + subfamily
+            builder.addName(u"Regular", 2, langTag)
         else:
             lgcFmly = family
+            builder.addName(u"Regular", 2, langTag)
         if self.__loadUstr(lang.get("fontFullName")):
             fullName = lang["fontFullName"]
         elif family and subfamily:
