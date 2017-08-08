@@ -142,14 +142,14 @@ class Fixer(Workers.Worker):
                 unsupported.append(namRec)
         for namRec in macNamRecs:
             tmpWinRecs = Workers.NameWorker.macName2WinAll(namRec, 1)
-            if tmpWinRecs is None:
-                continue
+            if tmpWinRecs is None or tmpMacRec.nameID == 18:
+                continue  # Windows platform doesn't need Mac compatible full.
             for tmpWinRec in tmpWinRecs:
                 builder.addWinNameEx(tmpWinRec.string, tmpWinRec.nameID, tmpWinRec.langID)
         for namRec in winNamRecs:
             tmpMacRec = Workers.NameWorker.winName2Mac(namRec)
             if tmpMacRec is None or tmpMacRec.nameID in [16, 17]:
-                continue  # The Mac platform doesn't need preferred family/subfamily.
+                continue  # Macintosh platform doesn't need preferred family/subfamily.
             builder.addMacNameEx(tmpMacRec.string, tmpMacRec.nameID, tmpMacRec.langID)
         # Update the `name` table with `cmap` consistency
         name = builder.build(cmap)

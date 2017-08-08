@@ -690,9 +690,11 @@ class Rebuilder(Workers.Worker):
         # name ID 2 has been already added by addStylelink()
         builder.addWinNameEx(enFamily, 16, 0x0409)
         builder.addWinNameEx(enSubfamily, 17, 0x0409)
+        # Full name
+        builder.addEngName(enFullName, 4)       # name ID 4 for both platforms
+        builder.addMacNameEx(enFullName, 18, 0) # name ID 18 for only Macintosh
         # Other stuff
         builder.addFontUniqueID(enUniqueID)     # name ID 3
-        builder.addEngName(enFullName, 4)       # name ID 4
         builder.addVersionString(enVersionStr)  # name ID 5
         builder.addPostScriptName(enPSname)     # name ID 6
         if self.__loadUstr(en.get("copyright")):
@@ -719,12 +721,12 @@ class Rebuilder(Workers.Worker):
             if langTag == "en":
                 continue
             else:
-                self.__rebuildName_addMultiLang(enSubfamily, langTag, builder)
+                self.__rebuildName_addMultiLang(builder, langTag, enSubfamily)
 
         self.font["name"] = builder.build(self.font["cmap"])
         return
 
-    def __rebuildName_addMultiLang(self, enSubfamily, langTag, nameTableBuilder):
+    def __rebuildName_addMultiLang(self, nameTableBuilder, langTag, enSubfamily):
         lang = self.config["Name"][langTag]
         builder = nameTableBuilder
         style = self.config.get("Style")
@@ -756,7 +758,7 @@ class Rebuilder(Workers.Worker):
             pass
 
         # Build multilingual part of `name`
-        # Subfamily, the mandatory stuff
+        # Subfamily, which is mandatory for *MS Office 2011 for Mac*
         builder.addMacName(subfamily, 2, langTag)
         builder.addWinNames(lgcSubfmly, 2, langTag)
         builder.addWinNames(subfamily, 17, langTag)
@@ -766,9 +768,11 @@ class Rebuilder(Workers.Worker):
         if family:
             builder.addMacName(family, 1, langTag)
             builder.addWinNames(family, 16, langTag)
-        # Other stuff
+        # Full name
         if fullName:
-            builder.addName(fullName, 4, langTag)
+            builder.addName(fullName, 4, langTag)  # Full name for both platforms
+            builder.addMacName(fullName, 18, langTag)  # Mac compatible full for only Macintosh
+        # Other stuff
         if self.__loadUstr(lang.get("copyright")):
             builder.addName(lang["copyright"], 0, langTag)
         if self.__loadUstr(lang.get("trademark")):
