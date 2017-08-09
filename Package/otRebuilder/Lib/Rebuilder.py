@@ -746,13 +746,6 @@ class Rebuilder(Workers.Worker):
         macFullName = macFamily + u" " + macSubfamily #4
         macVersionStr = enEssentials[3]  # Mac name ID 5
         macPSname = enEssentials[4]      # Mac name ID 6
-        macCompatibleFull = macFullName  # Mac name ID 18
-        if family:
-            macFamily = family
-        if subfamily:
-            macSubfamily = subfamily
-        if fullName:
-            macFullName = fullName
 
         # Deal with Windows legacy subfamily, which is the Win's mandatory item.
         if style.get("styleLink") in range(1, 5):
@@ -770,6 +763,14 @@ class Rebuilder(Workers.Worker):
         if not fullName and family and subfamily:
             fullName = family + u" " + subfamily
 
+        # Consolidate Mac family/subfamily/fullName
+        if family:
+            macFamily = family
+        if subfamily:
+            macSubfamily = subfamily
+        if fullName:
+            macFullName = fullName
+
         # Build multilingual part of `name`
         # Build Mac essentials first
         builder.addMacName(macFamily, 1, langTag)
@@ -778,7 +779,7 @@ class Rebuilder(Workers.Worker):
         builder.addMacName(macFullName, 4, langTag)
         builder.addMacName(macVersionStr, 5, langTag)
         builder.addMacName(macPSname, 6, langTag)
-        builder.addMacCompatibleFull(macCompatibleFull, langTag)
+        builder.addMacCompatibleFull(macFullName, langTag)
         # Build Win then
         builder.addWinNames(lgcSubfmly, 2, langTag)
         if lgcFmly:
