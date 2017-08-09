@@ -575,7 +575,7 @@ class Rebuilder(Workers.Worker):
         # Basic name records's initialization
         # From here the English font family always exists.
         enFamily = en.get("fontFamily")
-        enSubfamily = u"Regular"  # Default English subfamily
+        enSubfamily = u"R"  # Default English subfamily
         enLgcFmly = enFamily  # Default English legacy family
         enWWS = [None, None, None]  # [enWidth, enWeight, enItalic]
         enFullName = psName = versionStr = uniqueID = None
@@ -593,8 +593,8 @@ class Rebuilder(Workers.Worker):
                 enWWS[1] = Constants.ABBREVIATED_WEIGHTS[weightScale - 1].decode()
             if (isinstance(italicAngle, float) or isinstance(italicAngle, int)) and \
                 italicAngle != 0:
-                enWWS[2] = u"Italic"
-            # Fill English subfamily with strings from above
+                enWWS[2] = u"It"
+            # Fill English subfamily with abbreviated strings from above
             isFirst = True
             for item in enWWS:
                 if item:
@@ -630,6 +630,7 @@ class Rebuilder(Workers.Worker):
 
         # Get English subfamily and legacy family from configuration
         if self.__loadUstr(en.get("fontSubfamily")):
+            # Deal with Windows subfamily
             enSubfamily = self.__loadUstr(en.get("fontSubfamily"))
             # Generate English legacy family from enSubfamily and style-links
             enLgcFmly = enFamily + u" " + enSubfamily
