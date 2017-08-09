@@ -12,7 +12,7 @@ sys.path.insert(0, dependencyDir)
 REQUIRED_TABLES = ("cmap", "head", "hhea", "hmtx", "maxp")
 
 # Default values
-DEFAULT_FONT_NAME = "Default Font"
+DEFAULT_FONT_NAME = "Untitled Font"
 DEFAULT_OS2f2_VERSION = 3
 DEFAULT_OS2f2_ACHVENDID = "DFLT"
 DEFAULT_FONT_REVISION = 0.0
@@ -56,7 +56,7 @@ STANDARD_WIDTHS = ("Ultra-condensed ", "Extra-condensed", "Condensed", "Semi-con
 WIN_SAFE_WEIGHT_SCALES = (250, 275, 300, 400, 500, 600, 700, 800, 900, 950)
 STANDARD_WEIGHT_SCALES = (100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)
 ABBREVIATED_WEIGHTS = ("UL", "EL", "L", "R", "M", "DB", "B", "EB", "H", "BL")
-STANDARD_WEIGHTS = ("Thin", "Extralight", "Light", "Regular", "Medium", "Semibold", "Bold", "Extrabold", "Heavy", "Black")
+STANDARD_WEIGHTS = ("Ultralight", "Extralight", "Light", "Regular", "Medium", "Semibold", "Bold", "Extrabold", "Heavy", "Black")
 
 
 WIN_LANGCODE_TO_MAC = {
