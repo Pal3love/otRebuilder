@@ -822,19 +822,17 @@ class Rebuilder(Workers.Worker):
     # Add standard weight/width/slope strings on Mac name ID 2.
     # This is only designed for Mac Office 2011.
     def addMacOffice(self):
+        head = self.font.get("head")
         name = self.font.get("name")
         OS2f2 = self.font.get("OS/2")
-        if not name or not OS2f2:
+        if not head or not name or not OS2f2:
             return
         # Get the Macintosh English subfamily
         macEnSubfmlyRec = name.getName(2, 1, 0, 0)
         if macEnSubfmlyRec is None:
             return
         macEnSubfmlyStr = macEnSubfmlyRec.toUnicode()
-        # Replace nonstandard italic styles with "Italic"
-        for item in Constants.ITALIC_STYLES:
-            macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "Italic", macEnSubfmlyStr)
-        # Remove width and weight strings
+        # Remove width, weight and slope strings
         for item in Constants.STANDARD_WIDTHS:
             macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "", macEnSubfmlyStr)
         for item in Constants.ABBREVIATED_WIDTHS:
@@ -843,10 +841,15 @@ class Rebuilder(Workers.Worker):
             macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "", macEnSubfmlyStr)
         for item in Constants.ABBREVIATED_WEIGHTS:
             macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "", macEnSubfmlyStr)
-        # Add standard width and weight string
+        for item in Constants.ITALIC_STYLES:
+            macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "", macEnSubfmlyStr)
+        # Add standard width, weight and slope string
         widthScale = self.__getWidthScale(OS2f2.usWidthClass)
         weightScale = self.__getWeightScale(OS2f2.usWeightClass)
-        macEnSubfmlyStr += u" " + self.__getWidthString(widthScale) + u" " + self.__getWeightString(weightScale)
+        macEnSubfmlyStr += \
+            u" " + self.__getWidthString(widthScale) + \
+            u" " + self.__getWeightString(weightScale) + \
+            u" " + self.__getSlopeString(head.macStyle, OS2f2.fsSelection)
         # Clean-ups
         while macEnSubfmlyStr != macEnSubfmlyStr.replace(u"  ", u" "):
             macEnSubfmlyStr = macEnSubfmlyStr.replace(u"  ", u" ")
@@ -899,4 +902,10 @@ class Rebuilder(Workers.Worker):
 
     def __getWeightString(self, weightScale):
         return Constants.STANDARD_WEIGHTS[weightScale - 1].decode()
+
+    def __getSlopeString(self, macStyle, fsSelection):
+        if (macStyle & 1<<1) or (fsSelection & 1):
+            return u"Italic"
+        else:
+            return u""
 
