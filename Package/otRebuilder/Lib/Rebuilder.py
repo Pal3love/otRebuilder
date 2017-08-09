@@ -578,7 +578,7 @@ class Rebuilder(Workers.Worker):
         enSubfamily = u"Regular"  # Default English subfamily
         enLgcFmly = enFamily  # Default English legacy family
         enWWS = [None, None, None]  # [enWidth, enWeight, enItalic]
-        enFullName = enPSname = enVersionStr = enUniqueID = None
+        enFullName = psName = versionStr = uniqueID = None
 
         # Add style-links, generate English subfamily and legacy family
         if style:
@@ -659,28 +659,28 @@ class Rebuilder(Workers.Worker):
         # Deal with psName with priority below:
         # fullName < cffPSname < *specified*
         # Incompatible chars will be discarded
-        enPSname = enFamily.replace(u" ", u"") + u"-" + enSubfamily.replace(u" ", u"")
+        psName = enFamily.replace(u" ", u"") + u"-" + enSubfamily.replace(u" ", u"")
         if cffPSname:
-            enPSname = cffPSname
+            psName = cffPSname
         if self.__loadUstr(en.get("postScriptName")):
-            enPSname = self.__loadUstr(en.get("postScriptName"))
+            psName = self.__loadUstr(en.get("postScriptName"))
 
         # Deal with versionStr with priority below:
         # `head`.fontRevision < General.version < *specified*
         # Strings without the decimal dot will be added
-        enVersionStr = Workers.NameWorker.getVersionString(self.font["head"])
+        versionStr = Workers.NameWorker.getVersionString(self.font["head"])
         if general:
             versionNum = general.get("version")
             if isinstance(versionNum, float) or isinstance(versionNum, int):
-                enVersionStr = "Version " + "%.2f" % abs(versionNum)
+                versionStr = "Version " + "%.2f" % abs(versionNum)
         if self.__loadUstr(en.get("versionString")):
-            enVersionStr = self.__loadUstr(en.get("versionString"))
+            versionStr = self.__loadUstr(en.get("versionString"))
 
         # Deal with uniqueID with priority below:
         # fullName + versionStr < *specified*
-        enUniqueID = enFullName + u"; " + enVersionStr
+        uniqueID = enFullName + u"; " + versionStr
         if self.__loadUstr(en.get("uniqueID")):
-            enUniqueID = self.__loadUstr(en.get("uniqueID"))
+            uniqueID = self.__loadUstr(en.get("uniqueID"))
 
         # Build English part of `name`
         # Family and subfamily
@@ -694,9 +694,9 @@ class Rebuilder(Workers.Worker):
         builder.addEngName(enFullName, 4)       # name ID 4 for both platforms
         builder.addMacNameEx(enFullName, 18, 0) # name ID 18 for only Macintosh
         # Other stuff
-        builder.addFontUniqueID(enUniqueID)     # name ID 3
-        builder.addVersionString(enVersionStr)  # name ID 5
-        builder.addPostScriptName(enPSname)     # name ID 6
+        builder.addFontUniqueID(uniqueID)     # name ID 3
+        builder.addVersionString(versionStr)  # name ID 5
+        builder.addPostScriptName(psName)     # name ID 6
         if self.__loadUstr(en.get("copyright")):
             builder.addEngName(en["copyright"], 0)
         if self.__loadUstr(en.get("trademark")):
@@ -717,28 +717,43 @@ class Rebuilder(Workers.Worker):
             builder.addEngName(en["licenseURL"], 14)
 
         # Add multilingual names
+        enEssentials = (enFamily, enSubfamily, uniqueID, versionStr, psName)
         for langTag in name.keys():
             if langTag == "en":
                 continue
             else:
-                self.__rebuildName_addMultiLang(builder, langTag, enSubfamily)
+                self.__rebuildName_addMultiLang(builder, langTag, enEssentials)
 
         self.font["name"] = builder.build(self.font["cmap"])
         return
 
-    def __rebuildName_addMultiLang(self, nameTableBuilder, langTag, enSubfamily):
-        lang = self.config["Name"][langTag]
+    # enEssentials = (enFamily, enSubfamily, uniqueID, versionStr, psName)
+    def __rebuildName_addMultiLang(self, nameTableBuilder, langTag, enEssentials):
         builder = nameTableBuilder
         style = self.config.get("Style")
-        lgcFmly = lgcSubfmly = fullName = None
+        lang = self.config["Name"][langTag]
+
+        lgcFmly = lgcSubfmly = None
         family = self.__loadUstr(lang.get("fontFamily"))
+        subfamily = self.__loadUstr(lang.get("fontSubfamily"))
+        fullName = self.__loadUstr(lang.get("fontFullName"))
 
-        # To be compatible with *MS Office 2011 for Mac*, multilingual subfamilies must exist.
-        if self.__loadUstr(lang.get("fontSubfamily")):
-            subfamily = self.__loadUstr(lang.get("fontSubfamily"))
-        else:  # Set subfamily from English for fallback
-            subfamily = enSubfamily
+        # While the Mac platform needs complete name IDs for each language, Windows doesn't.
+        macFamily = enEssentials[0]      # Mac name ID 1
+        macSubfamily = enEssentials[1]   # Mac name ID 2
+        macUniqueID = enEssentials[2]    # Mac name ID 3
+        macFullName = macFamily + u" " + macSubfamily #4
+        macVersionStr = enEssentials[3]  # Mac name ID 5
+        macPSname = enEssentials[4]      # Mac name ID 6
+        macCompatibleFull = macFullName  # Mac name ID 18
+        if family:
+            macFamily = family
+        if subfamily:
+            macSubfamily = subfamily
+        if fullName:
+            macFullName = fullName
 
+        # Deal with Windows legacy subfamily, which is the Win's mandatory item.
         if style.get("styleLink") in range(1, 5):
             lgcFmly = family  # family might be None
             slCode = style.get("styleLink")
@@ -750,28 +765,29 @@ class Rebuilder(Workers.Worker):
             lgcFmly = family
             lgcSubfmly = u"Regular"
 
-        if self.__loadUstr(lang.get("fontFullName")):
-            fullName = lang["fontFullName"]
-        elif family and subfamily:
+        # The logic of Windows is different from Mac, so we can't merge both cases from above.
+        if not fullName and family and subfamily:
             fullName = family + u" " + subfamily
-        else:
-            pass
 
         # Build multilingual part of `name`
-        # Subfamily, which is mandatory for *MS Office 2011 for Mac*
-        builder.addMacName(subfamily, 2, langTag)
+        # Build Mac essentials first
+        builder.addMacName(macFamily, 1, langTag)
+        builder.addMacName(macSubfamily, 2, langTag)
+        builder.addMacName(macUniqueID, 3, langTag)
+        builder.addMacName(macFullName, 4, langTag)
+        builder.addMacName(macVersionStr, 5, langTag)
+        builder.addMacName(macPSname, 6, langTag)
+        builder.addMacName(macCompatibleFull, 18, langTag)
+        # Build Win then
         builder.addWinNames(lgcSubfmly, 2, langTag)
-        builder.addWinNames(subfamily, 17, langTag)
-        # Family and legacy family for Win
         if lgcFmly:
             builder.addWinNames(lgcFmly, 1, langTag)
         if family:
-            builder.addMacName(family, 1, langTag)
             builder.addWinNames(family, 16, langTag)
-        # Full name
+        if subfamily:
+            builder.addWinNames(subfamily, 17, langTag)
         if fullName:
-            builder.addName(fullName, 4, langTag)  # Full name for both platforms
-            builder.addMacName(fullName, 18, langTag)  # Mac compatible full for only Macintosh
+            builder.addWinNames(fullName, 4, langTag)
         # Other stuff
         if self.__loadUstr(lang.get("copyright")):
             builder.addName(lang["copyright"], 0, langTag)
