@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.3.9, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.4.1, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -50,6 +50,12 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.3.9, powered by fontT
             recalculated. This option would be ignored if a TrueType
             font is specified. Please rebuild `GPOS`, `JSTF` and `MATH`
             table after conversion if UPM is changed.
+        --macOffice: Add standard weight/width/slope strings onto Mac
+            English subfamily in order to be completely compatible with
+            Microsoft Office 2011 for Mac. Only enable this option when
+            one or more subfamilies are missing in Mac Office 2011's
+            font menu. DO NOT USE for later Office versions nor Windows
+            versions.
         --refresh: Re-compile all font tables.
         --recalculate: Recalculate glyph bounding boxes, min/max values
             and Unicode ranges.
@@ -110,6 +116,7 @@ def parseArgs():
     parser.add_argument("-o", metavar = "outputFont", help = argparse.SUPPRESS)
     parser.add_argument("-c", metavar = "configTOML", help = argparse.SUPPRESS)
     parser.add_argument("--otf2ttf", metavar = "targetUPM", type = int, help = argparse.SUPPRESS)
+    parser.add_argument("--macOffice", action="store_true", help = argparse.SUPPRESS)
     parser.add_argument("--refresh", action="store_true", help = argparse.SUPPRESS)
     parser.add_argument("--recalculate", action="store_true", help = argparse.SUPPRESS)
     parser.add_argument("--removeGlyphNames", action="store_true", help = argparse.SUPPRESS)
@@ -170,6 +177,7 @@ def parseArgs():
     jobs.init_removeGlyphNames = args.removeGlyphNames
     jobs.init_removeBitmap = args.removeBitmap
     jobs.rebuild_allowUpgrade = args.allowUpgrade
+    jobs.rebuild_addMacOffice = args.macOffice
     jobs.rebuild_DSIG = args.dummySignature
     jobs.convert_otf2ttf = args.otf2ttf
     
@@ -194,6 +202,7 @@ class Jobs(object):
         self.fix_cmap = True
         self.fix_name = True
         self.rebuild_allowUpgrade = False
+        self.rebuild_addMacOffice = False
         self.rebuild_cmap = False
         self.rebuild_gasp = False
         self.rebuild_prep = False
@@ -341,6 +350,8 @@ def doRebuilds(ttfontObj, jobsObj, configDict):
         rebuilder.rebuildCmap()
     if configDict:
         rebuilder.rebuildByConfig()
+    if jobsObj.rebuild_addMacOffice:
+        rebuilder.addMacOffice()
     return
 
 

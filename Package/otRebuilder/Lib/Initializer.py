@@ -257,6 +257,7 @@ class Initializer(Workers.Worker):
                 builder.addWinNameEx(winLegacyFamily.decode(), 1, 0x0409)
                 builder.addWinNameEx(u"Regular", 2, 0x0409)
         builder.addEngName(fullName, 4)
+        builder.addMacCompatibleFullEx(fullName, 0)
         builder.addPostScriptName(psName)
         builder.addFontUniqueID(uniqueID)
         builder.addVersionString(versionStr)

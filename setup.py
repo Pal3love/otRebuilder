@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "otrebuilder",
-    version = "1.3.9",
+    version = "1.4.1",
     description = "A simple tool to resolve OpenType fonts' mapping and naming issues, powered by fontTools.",
     author = "Pal3love",
     author_email = "pal3love@gmail.com",
