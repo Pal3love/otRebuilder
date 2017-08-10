@@ -843,7 +843,8 @@ class Rebuilder(Workers.Worker):
             macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "", macEnSubfmlyStr)
         for item in Constants.ITALIC_STYLES:
             macEnSubfmlyStr = re.sub(r"(?i)\b" + item + r"\b", "", macEnSubfmlyStr)
-        # Add standard width, weight and slope string
+        # Add standard weight and slope string with abbreviated width string.
+        # Mac Office 2011 uses weights and slopes to guess style-links.
         widthScale = self.__getWidthScale(OS2f2.usWidthClass)
         weightScale = self.__getWeightScale(OS2f2.usWeightClass)
         macEnSubfmlyStr += \
@@ -895,7 +896,7 @@ class Rebuilder(Workers.Worker):
     def __getWidthString(self, widthScale):
         widthString = None
         if widthScale != 5:
-            widthString = Constants.STANDARD_WIDTHS[widthScale - 1]
+            widthString = Constants.ABBREVIATED_WIDTHS[widthScale - 1]
         else:
             widthString = ""
         return widthString.decode()
