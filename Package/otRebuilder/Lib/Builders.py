@@ -407,7 +407,7 @@ class NameTableBuilder(object):
         string = re.sub(r"[\(\)\[\]\{\}<>/%]+", r"", string)
         string = re.sub(r"\s+", r"-", string)
         self.addEngName(string, 6)
-        return
+        return string
 
     # Name ID 6, English US
     def addPostScriptNameFromNameTable(self, nameTable):

@@ -695,9 +695,9 @@ class Rebuilder(Workers.Worker):
         builder.addEngName(enFullName, 4)  # name ID 4 for both platforms
         builder.addMacCompatibleFullEx(enFullName, 0)  # name ID 18 for only Macintosh
         # Other stuff
-        builder.addFontUniqueID(uniqueID)     # name ID 3
+        builder.addFontUniqueID(uniqueID)  # name ID 3
         builder.addVersionString(versionStr)  # name ID 5
-        builder.addPostScriptName(psName)     # name ID 6
+        psName = builder.addPostScriptName(psName)  # name ID 6
         if self.__loadUstr(en.get("copyright")):
             builder.addEngName(en["copyright"], 0)
         if self.__loadUstr(en.get("trademark")):
