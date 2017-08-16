@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.4.5, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.4.6, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -49,13 +49,15 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.4.5, powered by fontT
             bounding boxes and min/max values will be automatically
             recalculated. This option would be ignored if a TrueType
             font is specified. Please rebuild `GPOS`, `JSTF` and `MATH`
-            table after conversion if UPM is changed.
+            table after conversion if UPM is different from the source.
         --macOffice: Add standard weight/slope strings into Mac English
-            subfamily in order to obtain complete compatibilities with
+            subfamily and remove legacy Macintosh Roman character
+            mappings in order to obtain the maximum compatibility with
             Microsoft Office 2011 for Mac. Only enable this option when
-            one or more subfamilies are missing in Mac Office 2011's
-            font menu. DO NOT USE for later Office versions nor Windows
-            versions.
+            one or more subfamilies are missing from Mac Office 2011's
+            font menu or characters outside Mac Roman are unavailable on
+            Mac Office 2011. DO NOT USE for later Mac Office versions
+            nor Windows versions.
         --refresh: Re-compile all font tables.
         --recalculate: Recalculate glyph bounding boxes, min/max values
             and Unicode ranges.
@@ -177,7 +179,7 @@ def parseArgs():
     jobs.init_removeGlyphNames = args.removeGlyphNames
     jobs.init_removeBitmap = args.removeBitmap
     jobs.rebuild_allowUpgrade = args.allowUpgrade
-    jobs.rebuild_addMacOffice = args.macOffice
+    jobs.rebuild_macOffice = args.macOffice
     jobs.rebuild_DSIG = args.dummySignature
     jobs.convert_otf2ttf = args.otf2ttf
     
@@ -202,7 +204,7 @@ class Jobs(object):
         self.fix_cmap = True
         self.fix_name = True
         self.rebuild_allowUpgrade = False
-        self.rebuild_addMacOffice = False
+        self.rebuild_macOffice = False
         self.rebuild_cmap = False
         self.rebuild_gasp = False
         self.rebuild_prep = False
@@ -282,11 +284,16 @@ def getConfigDict(configPath):
         configRaw = configRaw[3:]
     try:
         configDict = toml.loads(configRaw)
-    except toml.TomlDecodeError:
-        print("ERROR: Invalid config file. Please make sure it complies TOML specification and is UTF-8 encoded.", file = sys.stderr)
+    except toml.TomlDecodeError as tomlExp:
+        for string in tomlExp.args:
+            print("ERROR: Invalid TOML syntax. " + string, file = sys.stderr)
+        sys.exit(1)
+    except TypeError as typeExp:
+        for string in typeExp.args:
+            print("ERROR: Invalid config file. " + string, file = sys.stderr)
         sys.exit(1)
     except:
-        print("ERROR: Invalid config file. Please make sure it complies TOML specification.", file = sys.stderr)
+        print("ERROR: Invalid config file. Please make sure it is UTF-8 encoded and complies TOML specification.", file = sys.stderr)
         print("Please review TOML specification at: https://github.com/toml-lang/toml", file = sys.stderr)
         sys.exit(1)
     return configDict
@@ -350,7 +357,7 @@ def doRebuilds(ttfontObj, jobsObj, configDict):
         rebuilder.rebuildCmap()
     if configDict:
         rebuilder.rebuildByConfig()
-    if jobsObj.rebuild_addMacOffice:
+    if jobsObj.rebuild_macOffice:
         rebuilder.addMacOffice()
     return
 

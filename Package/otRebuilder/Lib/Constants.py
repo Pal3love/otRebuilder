@@ -44,8 +44,8 @@ STYLELINK_BOLD = 2
 STYLELINK_ITALIC = 3
 STYLELINK_BOLDITALIC = 4
 
-# Legacy Style Strings
-REGULAR_STYLES = ("Regular", "Rg", "R", "Normal", "Roman", "Rm")
+# Style Strings
+REGULAR_STYLES = ("Regular", "Rg", "R", "Normal", "Roman", "Rm", "W3", "W4")
 ITALIC_STYLES = ("Italic", "It", "Oblique", "Obl")
 LEGACY_WIN_STYLES = ("Regular", "Bold", "Italic", "Bold Italic")
 

@@ -225,10 +225,10 @@ class Fixer(Workers.Worker):
                 Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSubtables[1])
                 )
         if sourceSubtables[2]:  # macRoman
-            # *MS Office 2011 for Mac* sometimes overrides macRoman to all subtables.
+            # **Mac Office 2011** sometimes overrides macRoman to all subtables.
             # In case of that, we temporarily turn it off.
-            # newSubtables.append(sourceSubtables[2])
-            pass
+            if not self.jobs.rebuild_macOffice:
+                newSubtables.append(sourceSubtables[2])
         if sourceSubtables[3] and not sourceSubtables[1]:  # uniBMPfromMacRoman
             newSubtables.extend(
                 Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSubtables[3])

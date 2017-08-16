@@ -59,6 +59,7 @@ class Rebuilder(Workers.Worker):
         sourceSub = [None for i in range(7)]
         unsupported = []  # Unsupported Unicode subtables, like winSymbol, macUVS, etc.
         newSub = []
+        newMacRoman = None
         for subtable in cmap.tables:
             if subtable.isUnicode():
                 if Workers.CmapWorker.isLastResort(subtable):
@@ -85,31 +86,35 @@ class Rebuilder(Workers.Worker):
                 continue
         # Build all from top to bottom.
         # Priority ranking: macLastResort > winFull > macFull > winBMP > macBMP > macRoman
-        # *MS Office 2011 for Mac* sometimes overrides macRoman to all subtables.
-        # In case of that, we temporarily turn it off.
-        if sourceSub[5]:  # macLastResort, 4->3 subtables in total
+        if sourceSub[5]:  # macLastResort, 4 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildfmt13sFromLastResort(sourceSub[5]))
-            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[5]))
-        elif sourceSub[1]:  # winFull, 5->4 subtables in total
+            newMacRoman = Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[5])
+        elif sourceSub[1]:  # winFull, 5 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildUnicodeAllFromFull(sourceSub[1]))
-            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[1]))
-        elif sourceSub[4]:  # macFull, 5->4 subtables in total
+            newMacRoman = Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[1])
+        elif sourceSub[4]:  # macFull, 5 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildUnicodeAllFromFull(sourceSub[4]))
-            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[4]))
-        elif sourceSub[0]:  # winBMP, 3->2 subtables in total
+            newMacRoman = Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[4])
+        elif sourceSub[0]:  # winBMP, 3 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSub[0]))
-            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[0]))
-        elif sourceSub[3]:  # macBMP, 3->2 subtables in total
+            newMacRoman = Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[0])
+        elif sourceSub[3]:  # macBMP, 3 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildFmt4sFromBMP(sourceSub[3]))
-            # newSub.append(Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[3]))
-        elif sourceSub[2]:  # macRoman, 3->2 subtables in total
+            newMacRoman = Workers.CmapWorker.subtable_buildMacRomanFromUnicode(sourceSub[3])
+        elif sourceSub[2]:  # macRoman, 3 subtables in total
             newSub.extend(Workers.CmapWorker.subtables_buildFmt4sFromMacRoman(sourceSub[2]))
-            # newSub.append(sourceSub[2])
+            newMacRoman = sourceSub[2]
         else:
             pass
+        # **Mac Office 2011** sometimes overrides macRoman to all subtables.
+        # In case of that, we temporarily turn it off.
+        if newMacRoman and not self.jobs.rebuild_macOffice:
+            newSub.append(newMacRoman)
+        # Add unsupported subtables.
         newSub.extend(unsupported)
+        # Apply changes.
         cmap.tables = newSub
-        # Recheck consistency between `cmap` and `name` if configDict is not specified (with fix_name set).
+        # Update consistencies between `cmap` and `name` if configDict is not specified.
         if self.jobs.fix_name:
             fixer = Fixer.Fixer(self.font, self.jobs)
             fixer.fixName()
@@ -303,11 +308,11 @@ class Rebuilder(Workers.Worker):
             embeddingRestriction = general.get("embeddingRestriction")
             activeCodepages = general.get("codepages")
             if embeddingRestriction in range(0, 4):
-                if embeddingRestriction == 1:  # Editable
+                if embeddingRestriction == Constants.EMBED_EDITABLE:
                     OS2f2T.fsType = 8
-                elif embeddingRestriction == 2:  # Preview & Print
+                elif embeddingRestriction == Constants.EMBED_PREVIEW_AND_PRINT:
                     OS2f2T.fsType = 4
-                elif embeddingRestriction == 3:  # Restricted
+                elif embeddingRestriction == Constants.EMBED_RESTRICTED:
                     OS2f2T.fsType = 2
                 else:  # No Restriction
                     OS2f2T.fsType = 0
@@ -759,7 +764,7 @@ class Rebuilder(Workers.Worker):
             lgcFmly = family
             lgcSubfmly = u"Regular"
 
-        # The logic of Windows is different from Mac, so we can't merge both cases from above.
+        # Windows logic is different from Mac, so we can't merge both cases from above.
         if not fullName and family and subfamily:
             fullName = family + u" " + subfamily
 
@@ -819,8 +824,8 @@ class Rebuilder(Workers.Worker):
         else:
             return None
 
-    # Add standard weight/width/slope strings on Mac name ID 2.
-    # This is only designed for Mac Office 2011.
+    # Add standard weight/width/slope strings into Mac name ID 2.
+    # This is only designed for **Mac Office 2011**.
     def addMacOffice(self):
         head = self.font.get("head")
         name = self.font.get("name")
