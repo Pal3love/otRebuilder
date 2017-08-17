@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.4.7, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.4.8, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -335,6 +335,8 @@ def doFixes(ttfontObj, jobsObj):
     fixer.fixHeader()
     fixer.fixHead()
     fixer.fixHhea()
+    fixer.fixMaxp()
+    fixer.fixPost()
     fixer.fixOS2f2()
     if ttfontObj.has_key("CFF ") and jobsObj.fix_fromCFF:
         fixer.fixFromCFF()

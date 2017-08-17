@@ -441,7 +441,8 @@ class Rebuilder(Workers.Worker):
                     else:
                         pass
                 else:
-                    # Update average char width
+                    # We must update average char width again even though it has been updated by the Fixer
+                    # because the monospace switch might be turned on before we arrive here.
                     if self.jobs.general_recalc:
                         OS2f2T.xAvgCharWidth = Workers.OS2f2Worker.recalcXAvgCharWidth(self.font["hmtx"], False)
                     # Update PANOSE

@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: otrebuilder
-Version: 1.4.7
+Version: 1.4.8
 Summary: A simple tool to resolve OpenType fonts' mapping and naming issues, powered by fontTools.
 Home-page: https://github.com/Pal3love/otRebuilder
 Author: Pal3love

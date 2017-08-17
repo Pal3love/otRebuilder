@@ -44,7 +44,7 @@ class VarLibError(Exception):
 # Creation routines
 #
 
-def _add_fvar_avar(font, axes, instances):
+def _add_fvar(font, axes, instances):
 	"""
 	Add 'fvar' table to font.
 
@@ -57,7 +57,7 @@ def _add_fvar_avar(font, axes, instances):
 	assert axes
 	assert isinstance(axes, OrderedDict)
 
-	log.info("Generating fvar / avar")
+	log.info("Generating fvar")
 
 	fvar = newTable('fvar')
 	nameTable = font['name']
@@ -85,18 +85,43 @@ def _add_fvar_avar(font, axes, instances):
 			psname = tounicode(psname)
 			inst.postscriptNameID = nameTable.addName(psname)
 		inst.coordinates = {axes[k].tag:axes[k].map_backward(v) for k,v in coordinates.items()}
+		#inst.coordinates = {axes[k].tag:v for k,v in coordinates.items()}
 		fvar.instances.append(inst)
 
+	assert "fvar" not in font
+	font['fvar'] = fvar
+
+	return fvar
+
+def _add_avar(font, axes):
+	"""
+	Add 'avar' table to font.
+
+	axes is an ordered dictionary of DesignspaceAxis objects.
+	"""
+
+	assert axes
+	assert isinstance(axes, OrderedDict)
+
+	log.info("Generating avar")
+
 	avar = newTable('avar')
+
 	interesting = False
 	for axis in axes.values():
-		curve = avar.segments[axis.tag] = {}
-		if not axis.map or all(k==v for k,v in axis.map.items()):
+		# Currently, some rasterizers require that the default value maps
+		# (-1 to -1, 0 to 0, and 1 to 1) be present for all the segment
+		# maps, even when the default normalization mapping for the axis
+		# was not modified.
+		# https://github.com/googlei18n/fontmake/issues/295
+		# https://github.com/fonttools/fonttools/issues/1011
+		# TODO(anthrotype) revert this (and 19c4b37) when issue is fixed
+		curve = avar.segments[axis.tag] = {-1.0: -1.0, 0.0: 0.0, 1.0: 1.0}
+		if not axis.map:
 			continue
-		interesting = True
 
 		items = sorted(axis.map.items())
-		keys   = [item[0] for item in items]
+		keys = [item[0] for item in items]
 		vals = [item[1] for item in items]
 
 		# Current avar requirements.  We don't have to enforce
@@ -116,24 +141,26 @@ def _add_fvar_avar(font, axes, instances):
 
 		keys = [models.normalizeValue(v, keys_triple) for v in keys]
 		vals = [models.normalizeValue(v, vals_triple) for v in vals]
+
+		if all(k == v for k, v in zip(keys, vals)):
+			continue
+		interesting = True
+
 		curve.update(zip(keys, vals))
 
 		assert 0.0 in curve and curve[0.0] == 0.0
 		assert -1.0 not in curve or curve[-1.0] == -1.0
 		assert +1.0 not in curve or curve[+1.0] == +1.0
-		curve.update({-1.0: -1.0, 0.0: 0.0, 1.0: 1.0})
+		# curve.update({-1.0: -1.0, 0.0: 0.0, 1.0: 1.0})
 
+	assert "avar" not in font
 	if not interesting:
 		log.info("No need for avar")
 		avar = None
-
-	assert "fvar" not in font
-	font['fvar'] = fvar
-	assert "avar" not in font
-	if avar:
+	else:
 		font['avar'] = avar
 
-	return fvar,avar
+	return avar
 
 # TODO Move to glyf or gvar table proper
 def _GetCoordinates(font, glyphName):
@@ -613,6 +640,9 @@ def _add_MVAR(font, model, master_ttfs, axisTags):
 		mvar.Version = 0x00010000
 		mvar.Reserved = 0
 		mvar.VarStore = store_builder.finish()
+		# XXX these should not be hard-coded but computed automatically
+		mvar.ValueRecordSize = 8
+		mvar.ValueRecordCount = len(records)
 		mvar.ValueRecord = sorted(records, key=lambda r: r.ValueTag)
 
 
@@ -761,7 +791,7 @@ def load_designspace(designspace_filename):
 	normalized_master_locs = [o['location'] for o in masters]
 	log.info("Internal master locations:\n%s", pformat(normalized_master_locs))
 
-	# TODO This mapping should ideally be moved closer to logic in _add_fvar_avar
+	# TODO This mapping should ideally be moved closer to logic in _add_fvar/avar
 	internal_axis_supports = {}
 	for axis in axes.values():
 		triple = (axis.minimum, axis.default, axis.maximum)
@@ -804,7 +834,8 @@ def build(designspace_filename, master_finder=lambda s:s):
 	vf = TTFont(master_ttfs[base_idx])
 
 	# TODO append masters as named-instances as well; needs .designspace change.
-	fvar,avar = _add_fvar_avar(vf, axes, instances)
+	fvar = _add_fvar(vf, axes, instances)
+	_add_avar(vf, axes)
 	del instances
 
 	# Map from axis names to axis tags...
@@ -819,10 +850,10 @@ def build(designspace_filename, master_finder=lambda s:s):
 
 	log.info("Building variations tables")
 	_add_MVAR(vf, model, master_fonts, axisTags)
-	if 'glyf' in vf:
-		_add_gvar(vf, model, master_fonts)
 	_add_HVAR(vf, model, master_fonts, axisTags)
 	_merge_OTL(vf, model, master_fonts, axisTags)
+	if 'glyf' in vf:
+		_add_gvar(vf, model, master_fonts)
 
 	return vf, model, master_ttfs
 

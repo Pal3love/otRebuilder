@@ -84,12 +84,10 @@ class Initializer(Workers.Worker):
             self.font["name"] = self.__createName()
         return
 
-    # If `post` doesn't exist, generate a new one with version 1.0.
+    # If `post` doesn't exist, generate a new one with version 3.0.
     def initPost(self):
         if not self.font.has_key("post"):
             self.font["post"] = self.__createPost()
-        if self.font.has_key("CFF "):
-            self.font["post"].formatType = 3.0
         return
 
     # After font modification the original signature would become invalid, so it should be removed.

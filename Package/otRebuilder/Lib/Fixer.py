@@ -45,6 +45,33 @@ class Fixer(Workers.Worker):
         hhea.metricDataFormat = 0
         return
 
+    def fixMaxp(self):
+        maxp = self.font.get("maxp")
+        if self.font.has_key("glyf") and maxp.tableVersion != 0x00010000:
+            maxp.tableVersion = 0x00010000
+            # Add necessary attributes for TrueType `maxp`.
+            maxp.maxZones = 1
+            maxp.maxTwilightPoints = 0
+            maxp.maxStorage = 0
+            maxp.maxFunctionDefs = 0
+            maxp.maxInstructionDefs = 0
+            maxp.maxStackElements = 0
+            maxp.maxSizeOfInstructions = 0
+            maxp.maxComponentElements = max(
+                len(g.components if hasattr(g, "components") else [])
+                for g in self.font.get("glyf").glyphs.values())
+            # Add remaining necessary attrs by recalculating BBoxs.
+            self.font.recalcBBoxes = True
+        else:
+            maxp.tableVersion = 0x00005000
+        return
+
+    def fixPost(self):
+        post = self.font.get("post")
+        if self.font.has_key("CFF "):
+            post.formatType = 3.0
+        return
+
     # We don't have to worry about unused attributes because the compiler compiles only necessary ones.
     def fixOS2f2(self):
         OS2f2 = self.font.get("OS/2")

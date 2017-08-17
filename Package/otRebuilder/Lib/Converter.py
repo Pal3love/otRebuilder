@@ -73,7 +73,7 @@ class Converter(Workers.Worker):
         gasp.gaspRange = {65535: 10}
         self.font["gasp"] = gasp
 
-        # Create partial `maxp` table
+        # Create partial TrueType `maxp` table (v1.0)
         maxp = newTable("maxp")
         maxp.tableVersion = 0x00010000
         maxp.maxZones = 1

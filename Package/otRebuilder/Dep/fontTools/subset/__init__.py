@@ -147,9 +147,10 @@ Glyph set expansion:
       set of OpenType layout feature tags that will be preserved.
       Glyph variants used by the preserved features are added to the
       specified subset glyph set. By default, 'calt', 'ccmp', 'clig', 'curs',
-      'kern', 'liga', 'locl', 'mark', 'mkmk', 'rclt', 'rlig' and all features
-      required for script shaping are preserved. To see the full list, try
-      '--layout-features=?'. Use '*' to keep all features.
+      'dnom', 'frac', 'kern', 'liga', 'locl', 'mark', 'mkmk', 'numr', 'rclt',
+      'rlig', 'rvrn', and all features required for script shaping are
+      preserved. To see the full list, try '--layout-features=?'.
+      Use '*' to keep all features.
       Multiple --layout-features options can be provided if necessary.
       Examples:
         --layout-features+=onum,pnum,ss01
@@ -1182,8 +1183,7 @@ def subset_lookups(self, lookup_indices):
 
 @_add_method(otTables.Lookup)
 def collect_lookups(self):
-    return _uniq_sort(sum((st.collect_lookups() for st in self.SubTable
-                           if st), []))
+    return sum((st.collect_lookups() for st in self.SubTable if st), [])
 
 @_add_method(otTables.Lookup)
 def may_have_non_1to1(self):
@@ -1219,6 +1219,7 @@ def neuter_lookups(self, lookup_indices):
 
 @_add_method(otTables.LookupList)
 def closure_lookups(self, lookup_indices):
+    """Returns sorted index of all lookups reachable from lookup_indices."""
     lookup_indices = _uniq_sort(lookup_indices)
     recurse = lookup_indices
     while True:
@@ -1234,6 +1235,7 @@ def closure_lookups(self, lookup_indices):
 
 @_add_method(otTables.Feature)
 def subset_lookups(self, lookup_indices):
+    """"Returns True if feature is non-empty afterwards."""
     self.LookupListIndex = [l for l in self.LookupListIndex
                             if l in lookup_indices]
     # Now map them.
@@ -1242,10 +1244,6 @@ def subset_lookups(self, lookup_indices):
     self.LookupCount = len(self.LookupListIndex)
     return self.LookupCount or self.FeatureParams
 
-@_add_method(otTables.Feature)
-def collect_lookups(self):
-    return self.LookupListIndex[:]
-
 @_add_method(otTables.FeatureList)
 def subset_lookups(self, lookup_indices):
     """Returns the indices of nonempty features."""
@@ -1253,17 +1251,15 @@ def subset_lookups(self, lookup_indices):
     # HarfBuzz chooses shaper for Khmer based on presence of this
     # feature.    See thread at:
     # http://lists.freedesktop.org/archives/harfbuzz/2012-November/002660.html
-    feature_indices = [i for i,f in enumerate(self.FeatureRecord)
-                       if (f.Feature.subset_lookups(lookup_indices) or
-                           f.FeatureTag == 'pref')]
-    self.subset_features(feature_indices)
-    return feature_indices
+    return [i for i,f in enumerate(self.FeatureRecord)
+            if (f.Feature.subset_lookups(lookup_indices) or
+                f.FeatureTag == 'pref')]
 
 @_add_method(otTables.FeatureList)
 def collect_lookups(self, feature_indices):
-    return _uniq_sort(sum((self.FeatureRecord[i].Feature.collect_lookups()
-                           for i in feature_indices
-                           if i < self.FeatureCount), []))
+    return sum((self.FeatureRecord[i].Feature.LookupListIndex
+                for i in feature_indices
+                if i < self.FeatureCount), [])
 
 @_add_method(otTables.FeatureList)
 def subset_features(self, feature_indices):
@@ -1271,6 +1267,41 @@ def subset_features(self, feature_indices):
     self.FeatureRecord = [self.FeatureRecord[i] for i in feature_indices]
     self.FeatureCount = len(self.FeatureRecord)
     return bool(self.FeatureCount)
+
+@_add_method(otTables.FeatureTableSubstitution)
+def subset_lookups(self, lookup_indices):
+    """Returns the indices of nonempty features."""
+    return [r.FeatureIndex for r in self.SubstitutionRecord
+            if r.Feature.subset_lookups(lookup_indices)]
+
+@_add_method(otTables.FeatureVariations)
+def subset_lookups(self, lookup_indices):
+    """Returns the indices of nonempty features."""
+    return sum((f.FeatureTableSubstitution.subset_lookups(lookup_indices)
+                for f in self.FeatureVariationRecord), [])
+
+@_add_method(otTables.FeatureVariations)
+def collect_lookups(self, feature_indices):
+    return sum((r.Feature.LookupListIndex
+                for vr in self.FeatureVariationRecord
+                for r in vr.FeatureTableSubstitution.SubstitutionRecord
+                if r.FeatureIndex in feature_indices), [])
+
+@_add_method(otTables.FeatureTableSubstitution)
+def subset_features(self, feature_indices):
+    self.ensureDecompiled()
+    self.SubstitutionRecord = [r for r in self.SubstitutionRecord
+                               if r.FeatureIndex in feature_indices]
+    self.SubstitutionCount = len(self.SubstitutionRecord)
+    return bool(self.SubstitutionCount)
+
+@_add_method(otTables.FeatureVariations)
+def subset_features(self, feature_indices):
+    self.ensureDecompiled()
+    self.FeaturVariationRecord = [r for r in self.FeatureVariationRecord
+                                  if r.FeatureTableSubstitution.subset_features(feature_indices)]
+    self.FeatureVariationCount = len(self.FeatureVariationRecord)
+    return bool(self.FeatureVariationCount)
 
 @_add_method(otTables.DefaultLangSys,
              otTables.LangSys)
@@ -1295,9 +1326,10 @@ def collect_features(self):
     return _uniq_sort(feature_indices)
 
 @_add_method(otTables.Script)
-def subset_features(self, feature_indices):
+def subset_features(self, feature_indices, keepEmptyDefaultLangSys=False):
     if(self.DefaultLangSys and
-       not self.DefaultLangSys.subset_features(feature_indices)):
+       not self.DefaultLangSys.subset_features(feature_indices) and
+       not keepEmptyDefaultLangSys):
         self.DefaultLangSys = None
     self.LangSysRecord = [l for l in self.LangSysRecord
                           if l.LangSys.subset_features(feature_indices)]
@@ -1313,8 +1345,10 @@ def collect_features(self):
 
 @_add_method(otTables.ScriptList)
 def subset_features(self, feature_indices, retain_empty):
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=1331737#c32
     self.ScriptRecord = [s for s in self.ScriptRecord
-                         if s.Script.subset_features(feature_indices) or retain_empty]
+                         if s.Script.subset_features(feature_indices, s.ScriptTag=='DFLT') or
+                            retain_empty]
     self.ScriptCount = len(self.ScriptRecord)
     return bool(self.ScriptCount)
 
@@ -1352,6 +1386,9 @@ def closure_glyphs(self, s):
         lookup_indices = self.table.FeatureList.collect_lookups(feature_indices)
     else:
         lookup_indices = []
+    if getattr(self.table, 'FeatureVariations', None):
+        lookup_indices += self.table.FeatureVariations.collect_lookups(feature_indices)
+    lookup_indices = _uniq_sort(lookup_indices)
     if self.table.LookupList:
         while True:
             orig_glyphs = frozenset(s.glyphs)
@@ -1395,6 +1432,13 @@ def subset_lookups(self, lookup_indices):
         feature_indices = self.table.FeatureList.subset_lookups(lookup_indices)
     else:
         feature_indices = []
+    if getattr(self.table, 'FeatureVariations', None):
+        feature_indices += self.table.FeatureVariations.subset_lookups(lookup_indices)
+    feature_indices = _uniq_sort(feature_indices)
+    if self.table.FeatureList:
+        self.table.FeatureList.subset_features(feature_indices)
+    if getattr(self.table, 'FeatureVariations', None):
+        self.table.FeatureVariations.subset_features(feature_indices)
     if self.table.ScriptList:
         self.table.ScriptList.subset_features(feature_indices, self.retain_empty_scripts())
 
@@ -1417,6 +1461,9 @@ def prune_lookups(self, remap=True):
         lookup_indices = self.table.FeatureList.collect_lookups(feature_indices)
     else:
         lookup_indices = []
+    if getattr(self.table, 'FeatureVariations', None):
+        lookup_indices += self.table.FeatureVariations.collect_lookups(feature_indices)
+    lookup_indices = _uniq_sort(lookup_indices)
     if self.table.LookupList:
         lookup_indices = self.table.LookupList.closure_lookups(lookup_indices)
     else:
@@ -1427,13 +1474,15 @@ def prune_lookups(self, remap=True):
         self.neuter_lookups(lookup_indices)
 
 @_add_method(ttLib.getTableClass('GSUB'),
-                         ttLib.getTableClass('GPOS'))
+             ttLib.getTableClass('GPOS'))
 def subset_feature_tags(self, feature_tags):
     if self.table.FeatureList:
         feature_indices = \
             [i for i,f in enumerate(self.table.FeatureList.FeatureRecord)
              if f.FeatureTag in feature_tags]
         self.table.FeatureList.subset_features(feature_indices)
+        if getattr(self.table, 'FeatureVariations', None):
+            self.table.FeatureVariations.subset_features(feature_indices)
     else:
         feature_indices = []
     if self.table.ScriptList:
@@ -1449,6 +1498,8 @@ def prune_features(self):
         feature_indices = []
     if self.table.FeatureList:
         self.table.FeatureList.subset_features(feature_indices)
+    if getattr(self.table, 'FeatureVariations', None):
+        self.table.FeatureVariations.subset_features(feature_indices)
     if self.table.ScriptList:
         self.table.ScriptList.subset_features(feature_indices, self.retain_empty_scripts())
 
@@ -1511,6 +1562,7 @@ def prune_post_subset(self, options):
     if not table.LookupList:
         table.FeatureList = None
 
+
     if table.FeatureList:
         self.remove_redundant_langsys()
         # Remove unreferenced features
@@ -1527,6 +1579,13 @@ def prune_post_subset(self, options):
     # doesn't like NULL offsets here.
     #if table.ScriptList and not table.ScriptList.ScriptRecord:
     #    table.ScriptList = None
+
+    if not table.FeatureList and hasattr(table, 'FeatureVariations'):
+        table.FeatureVariations = None
+
+    if hasattr(table, 'FeatureVariations') and not table.FeatureVariations:
+        if table.Version == 0x00010001:
+            table.Version = 0x00010000
 
     return True
 
@@ -2434,7 +2493,8 @@ class Options(object):
     # Based on HarfBuzz shapers
     _layout_features_groups = {
         # Default shaper
-        'common': ['ccmp', 'liga', 'locl', 'mark', 'mkmk', 'rlig'],
+        'common': ['rvrn', 'ccmp', 'liga', 'locl', 'mark', 'mkmk', 'rlig'],
+        'fractions': ['frac', 'numr', 'dnom'],
         'horizontal': ['calt', 'clig', 'curs', 'kern', 'rclt'],
         'vertical': ['valt', 'vert', 'vkrn', 'vpal', 'vrt2'],
         'ltr': ['ltra', 'ltrm'],

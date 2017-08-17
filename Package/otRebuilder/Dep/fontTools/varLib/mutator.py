@@ -8,7 +8,7 @@ from fontTools.misc.py23 import *
 from fontTools.ttLib import TTFont
 from fontTools.ttLib.tables._g_l_y_f import GlyphCoordinates
 from fontTools.varLib import _GetCoordinates, _SetCoordinates
-from fontTools.varLib.models import VariationModel, supportScalar, normalizeLocation
+from fontTools.varLib.models import supportScalar, normalizeLocation
 import os.path
 
 
@@ -141,7 +141,7 @@ def main(args=None):
 		coordinates,_ = _GetCoordinates(varfont, glyphname)
 		origCoords, endPts = None, None
 		for var in variations:
-			scalar = supportScalar(loc, var.axes)
+			scalar = supportScalar(loc, var.axes, ot=True)
 			if not scalar: continue
 			delta = var.coordinates
 			if None in delta:

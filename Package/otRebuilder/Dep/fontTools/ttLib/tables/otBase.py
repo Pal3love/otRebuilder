@@ -233,17 +233,19 @@ class OTTableWriter(object):
 	def __getitem__(self, name):
 		return self.localState[name]
 
+	def __delitem__(self, name):
+		del self.localState[name]
+
 	# assembler interface
 
 	def getDataLength(self):
 		"""Return the length of this table in bytes, without subtables."""
 		l = 0
 		for item in self.items:
-			if hasattr(item, "getData") or hasattr(item, "getCountData"):
-				if item.longOffset:
-					l = l + 4  # sizeof(ULong)
-				else:
-					l = l + 2  # sizeof(UShort)
+			if hasattr(item, "getCountData"):
+				l += item.size
+			elif hasattr(item, "getData"):
+				l += 4 if item.longOffset else 2
 			else:
 				l = l + len(item)
 		return l
@@ -508,15 +510,16 @@ class CountReference(object):
 		else:
 			assert table[name] == value, (name, table[name], value)
 	def getCountData(self):
-		assert self.size in (2, 4)
 		v = self.table[self.name]
 		if v is None: v = 0
-		return packUShort(v) if self.size == 2 else packULong(v)
+		return {1:packUInt8, 2:packUShort, 4:packULong}[self.size](v)
 
+
+def packUInt8 (value):
+	return struct.pack(">B", value)
 
 def packUShort(value):
 	return struct.pack(">H", value)
-
 
 def packULong(value):
 	assert 0 <= value < 0x100000000, value
@@ -604,6 +607,9 @@ class BaseTable(object):
 						table["ExtensionLookupType"])
 			if conv.name == "FeatureParams":
 				conv = conv.getConverter(reader["FeatureTag"])
+			if conv.name == "SubStruct":
+				conv = conv.getConverter(reader.tableTag,
+				                         table["MorphType"])
 			if conv.repeat:
 				if conv.repeat in table:
 					countValue = table[conv.repeat]

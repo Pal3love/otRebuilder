@@ -222,6 +222,9 @@ def merge(merger, self, lst):
 		for j,glyph in enumerate(glyphs):
 			if values[j] is not None: continue
 			# Fill in value from other subtables
+			# Note!!! This *might* result in behavior change if ValueFormat2-zeroedness
+			# is different between used subtable and current subtable!
+			# TODO(behdad) Check and warn if that happens?
 			v = _Lookup_SinglePos_get_effective_value(merger.lookup_subtables[i], glyph)
 			if v is None:
 				v = otBase.ValueRecord(valueFormat)
@@ -271,6 +274,8 @@ def merge(merger, self, lst):
 	merger.mergeLists(self.PairValueRecord, padded)
 
 def _PairPosFormat1_merge(self, lst, merger):
+	assert _all_equal([l.ValueFormat2 == 0 for l in lst if l.PairSet]), "Report bug against fonttools."
+
 	# Merge everything else; makes sure Format is the same.
 	merger.mergeObjects(self, lst,
 			    exclude=('Coverage',
@@ -357,38 +362,13 @@ def _ClassDef_calculate_Format(self, font):
 			fmt = 1
 	self.Format = fmt
 
-def _PairPosFormat2_merge(self, lst, merger):
-
-	merger.mergeObjects(self, lst,
-			    exclude=('Coverage',
-				     'ClassDef1', 'Class1Count',
-				     'ClassDef2', 'Class2Count',
-				     'Class1Record'))
-
-	# Align coverages
-	glyphs, _ = _merge_GlyphOrders(merger.font,
-				       [v.Coverage.glyphs for v in lst])
-	self.Coverage.glyphs = glyphs
-	glyphSet = set(glyphs)
-
-	# Currently, if the coverage of PairPosFormat2 subtables are different,
-	# we do NOT bother walking down the subtable list when filling in new
-	# rows for alignment.  As such, this is only correct if current subtable
-	# is the last subtable in the lookup.  Ensure that.
-	#
-	# Note that our canonicalization process merges some PairPosFormat2's,
-	# so in reality this might not be common.
-	#
-	# TODO: Remove this requirement
-	for l,subtables in zip(lst,merger.lookup_subtables):
-		if l.Coverage.glyphs != glyphs:
-			assert l == subtables[-1]
+def _PairPosFormat2_align_matrices(self, lst, font, transparent=False):
 
 	matrices = [l.Class1Record for l in lst]
 
 	# Align first classes
-	self.ClassDef1, classes = _ClassDef_merge_classify([l.ClassDef1 for l in lst], allGlyphs=glyphSet)
-	_ClassDef_calculate_Format(self.ClassDef1, merger.font)
+	self.ClassDef1, classes = _ClassDef_merge_classify([l.ClassDef1 for l in lst], allGlyphs=set(self.Coverage.glyphs))
+	_ClassDef_calculate_Format(self.ClassDef1, font)
 	self.Class1Count = len(classes)
 	new_matrices = []
 	for l,matrix in zip(lst, matrices):
@@ -404,9 +384,12 @@ def _PairPosFormat2_merge(self, lst, merger):
 					class2records = nullRow.Class2Record = []
 					# TODO: When merger becomes selfless, revert e6125b353e1f54a0280ded5434b8e40d042de69f
 					for _ in range(l.Class2Count):
-						rec2 = ot.Class2Record()
-						rec2.Value1 = otBase.ValueRecord(l.ValueFormat1) if l.ValueFormat1 else None
-						rec2.Value2 = otBase.ValueRecord(l.ValueFormat2) if l.ValueFormat2 else None
+						if transparent:
+							rec2 = None
+						else:
+							rec2 = ot.Class2Record()
+							rec2.Value1 = otBase.ValueRecord(l.ValueFormat1) if l.ValueFormat1 else None
+							rec2.Value2 = otBase.ValueRecord(l.ValueFormat2) if l.ValueFormat2 else None
 						class2records.append(rec2)
 				rec1 = nullRow
 			else:
@@ -419,7 +402,7 @@ def _PairPosFormat2_merge(self, lst, merger):
 
 	# Align second classes
 	self.ClassDef2, classes = _ClassDef_merge_classify([l.ClassDef2 for l in lst])
-	_ClassDef_calculate_Format(self.ClassDef2, merger.font)
+	_ClassDef_calculate_Format(self.ClassDef2, font)
 	self.Class2Count = len(classes)
 	new_matrices = []
 	for l,matrix in zip(lst, matrices):
@@ -442,6 +425,35 @@ def _PairPosFormat2_merge(self, lst, merger):
 	matrices = new_matrices
 	del new_matrices
 
+	return matrices
+
+def _PairPosFormat2_merge(self, lst, merger):
+	assert _all_equal([l.ValueFormat2 == 0 for l in lst if l.Class1Record]), "Report bug against fonttools."
+
+	merger.mergeObjects(self, lst,
+			    exclude=('Coverage',
+				     'ClassDef1', 'Class1Count',
+				     'ClassDef2', 'Class2Count',
+				     'Class1Record'))
+
+	# Align coverages
+	glyphs, _ = _merge_GlyphOrders(merger.font,
+				       [v.Coverage.glyphs for v in lst])
+	self.Coverage.glyphs = glyphs
+
+	# Currently, if the coverage of PairPosFormat2 subtables are different,
+	# we do NOT bother walking down the subtable list when filling in new
+	# rows for alignment.  As such, this is only correct if current subtable
+	# is the last subtable in the lookup.  Ensure that.
+	#
+	# Note that our canonicalization process merges trailing PairPosFormat2's,
+	# so in reality this is rare.
+	for l,subtables in zip(lst,merger.lookup_subtables):
+		if l.Coverage.glyphs != glyphs:
+			assert l == subtables[-1]
+
+	matrices = _PairPosFormat2_align_matrices(self, lst, merger.font)
+
 	self.Class1Record = list(matrices[0]) # TODO move merger to be selfless
 	merger.mergeLists(self.Class1Record, matrices)
 
@@ -456,7 +468,7 @@ def merge(merger, self, lst):
 	elif self.Format == 2:
 		_PairPosFormat2_merge(self, lst, merger)
 	else:
-		assert 0
+		assert False
 
 	del merger.valueFormat1, merger.valueFormat2
 
@@ -486,7 +498,7 @@ def merge(merger, self, lst):
 	self.ValueFormat2 = vf2
 
 
-def _PairSet_merge_overlay(lst, font):
+def _PairSet_flatten(lst, font):
 	self = ot.PairSet()
 	self.Coverage = ot.Coverage()
 	self.Coverage.Format = 1
@@ -509,7 +521,9 @@ def _PairSet_merge_overlay(lst, font):
 
 	return self
 
-def _Lookup_PairPosFormat1_subtables_merge_overlay(lst, font):
+def _Lookup_PairPosFormat1_subtables_flatten(lst, font):
+	assert _all_equal([l.ValueFormat2 == 0 for l in lst if l.PairSet]), "Report bug against fonttools."
+
 	self = ot.PairPos()
 	self.Format = 1
 	self.Coverage = ot.Coverage()
@@ -523,45 +537,37 @@ def _Lookup_PairPosFormat1_subtables_merge_overlay(lst, font):
 					    [v.PairSet for v in lst])
 
 	self.Coverage.glyphs = glyphs
-	self.PairSet = [_PairSet_merge_overlay([v for v in values if v is not None], font)
+	self.PairSet = [_PairSet_flatten([v for v in values if v is not None], font)
 		        for values in zip(*padded)]
 	self.PairSetCount = len(self.PairSet)
 	return self
 
-def _Lookup_PairPosFormat2_subtables_recombine(a, b, font):
-	"""Combine two subtables that have the same general structure already."""
+def _Lookup_PairPosFormat2_subtables_flatten(lst, font):
+	assert _all_equal([l.ValueFormat2 == 0 for l in lst if l.Class1Record]), "Report bug against fonttools."
+
 	self = ot.PairPos()
 	self.Format = 2
 	self.Coverage = ot.Coverage()
 	self.Coverage.Format = 1
+	self.ValueFormat1 = reduce(int.__or__, [l.ValueFormat1 for l in lst], 0)
+	self.ValueFormat2 = reduce(int.__or__, [l.ValueFormat2 for l in lst], 0)
+
+	# Align them
 	glyphs, _ = _merge_GlyphOrders(font,
-				       [v.Coverage.glyphs for v in (a, b)])
-
+				       [v.Coverage.glyphs for v in lst])
 	self.Coverage.glyphs = glyphs
-	self.Class1Count = a.Class1Count + b.Class1Count
-	self.ClassDef1 = ot.ClassDef()
 
-	classDefs = self.ClassDef1.classDefs = {}
-	offset = a.Class1Count
-	# First subtable overrides any possible shared glyph, so add b first.
-	sets = _ClassDef_invert(b.ClassDef1, allGlyphs=b.Coverage.glyphs)
-	for i,s in enumerate(sets):
-		for g in s:
-			classDefs[g] = i + offset
-	sets = _ClassDef_invert(a.ClassDef1, allGlyphs=a.Coverage.glyphs)
-	assert len(sets) <= offset
-	for i,s in enumerate(sets):
-		for g in s:
-			classDefs[g] = i
+	matrices = _PairPosFormat2_align_matrices(self, lst, font, transparent=True)
 
-	records = self.Class1Record = []
-	assert a.Class1Count == len(a.Class1Record)
-	assert b.Class1Count == len(b.Class1Record)
-	records.extend(a.Class1Record)
-	records.extend(b.Class1Record)
-
-	for name in ('Class2Count', 'ClassDef2', 'ValueFormat1', 'ValueFormat2'):
-		setattr(self, name, getattr(a, name))
+	matrix = self.Class1Record = []
+	for rows in zip(*matrices):
+		row = ot.Class1Record()
+		matrix.append(row)
+		row.Class2Record = []
+		row = row.Class2Record
+		for cols in zip(*list(r.Class2Record for r in rows)):
+			col = next(iter(c for c in cols if c is not None))
+			row.append(col)
 
 	return self
 
@@ -569,31 +575,21 @@ def _Lookup_PairPos_subtables_canonicalize(lst, font):
 	"""Merge multiple Format1 subtables at the beginning of lst,
 	and merge multiple consecutive Format2 subtables that have the same
 	Class2 (ie. were split because of offset overflows).  Returns new list."""
-	head = []
-	tail = []
-	it = iter(lst)
+	lst = list(lst)
 
-	for subtable in it:
-		if subtable.Format == 1:
-			head.append(subtable)
-			continue
-		tail.append(subtable)
-		break
-	tail.insert(0, _Lookup_PairPosFormat1_subtables_merge_overlay(head, font))
+	l = len(lst)
+	i = 0
+	while i < l and lst[i].Format == 1:
+		i += 1
+	lst[:i] = [_Lookup_PairPosFormat1_subtables_flatten(lst[:i], font)]
 
-	for subtable in it:
-		oldtable = tail[-1]
-		if (oldtable.Format == 2 and subtable.Format == 2 and
-		    oldtable.Class2Count == subtable.Class2Count and
-		    oldtable.ClassDef2.classDefs == subtable.ClassDef2.classDefs and
-		    oldtable.ValueFormat1 == subtable.ValueFormat1 and
-		    oldtable.ValueFormat2 == subtable.ValueFormat2):
-			newtable = _Lookup_PairPosFormat2_subtables_recombine(oldtable, subtable, font)
-			tail[-1] = newtable
-			continue
-		tail.append(subtable)
+	l = len(lst)
+	i = l
+	while i > 0 and lst[i - 1].Format == 2:
+		i -= 1
+	lst[i:] = [_Lookup_PairPosFormat2_subtables_flatten(lst[i:], font)]
 
-	return tail
+	return lst
 
 @AligningMerger.merger(ot.Lookup)
 def merge(merger, self, lst):
@@ -629,6 +625,12 @@ def merge(merger, self, lst):
 		assert len(self.SubTable) >= 1 and self.SubTable[0].Format == 1
 		if not self.SubTable[0].Coverage.glyphs:
 			self.SubTable.pop(0)
+			self.SubTableCount -= 1
+
+		# If format-2 subtable created during canonicalization is empty, remove it.
+		assert len(self.SubTable) >= 1 and self.SubTable[-1].Format == 2
+		if not self.SubTable[-1].Coverage.glyphs:
+			self.SubTable.pop(-1)
 			self.SubTableCount -= 1
 
 	merger.mergeObjects(self, lst, exclude=['SubTable', 'SubTableCount'])
@@ -686,6 +688,8 @@ class VariationMerger(AligningMerger):
 		self.store_builder.setModel(model)
 
 def _all_equal(lst):
+	if not lst:
+		return True
 	it = iter(lst)
 	v0 = next(it)
 	for v in it:
