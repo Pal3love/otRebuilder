@@ -47,21 +47,22 @@ class Fixer(Workers.Worker):
 
     def fixMaxp(self):
         maxp = self.font.get("maxp")
-        if self.font.has_key("glyf") and maxp.tableVersion != 0x00010000:
-            maxp.tableVersion = 0x00010000
-            # Add necessary attributes for TrueType `maxp`.
-            maxp.maxZones = 1
-            maxp.maxTwilightPoints = 0
-            maxp.maxStorage = 0
-            maxp.maxFunctionDefs = 0
-            maxp.maxInstructionDefs = 0
-            maxp.maxStackElements = 0
-            maxp.maxSizeOfInstructions = 0
-            maxp.maxComponentElements = max(
-                len(g.components if hasattr(g, "components") else [])
-                for g in self.font.get("glyf").glyphs.values())
-            # Add remaining necessary attrs by recalculating BBoxs.
-            self.font.recalcBBoxes = True
+        if self.font.has_key("glyf"):
+            if maxp.tableVersion != 0x00010000:
+                maxp.tableVersion = 0x00010000
+                # Add necessary attributes for TrueType `maxp`.
+                maxp.maxZones = 1
+                maxp.maxTwilightPoints = 0
+                maxp.maxStorage = 0
+                maxp.maxFunctionDefs = 0
+                maxp.maxInstructionDefs = 0
+                maxp.maxStackElements = 0
+                maxp.maxSizeOfInstructions = 0
+                maxp.maxComponentElements = max(
+                    len(g.components if hasattr(g, "components") else [])
+                    for g in self.font.get("glyf").glyphs.values())
+                # Add remaining necessary attrs by recalculating BBoxs.
+                self.font.recalcBBoxes = True
         else:
             maxp.tableVersion = 0x00005000
         return
