@@ -45,7 +45,8 @@ STYLELINK_ITALIC = 3
 STYLELINK_BOLDITALIC = 4
 
 # Style Strings
-REGULAR_STYLES = ("Regular", "Rg", "R", "Normal", "Roman", "Rm", "W3", "W4")
+REGULAR_STYLES = ("Regular", "Rg", "Roman", "Rm", "R", "Normal", "Norm", "Nm", "Book", "Bk")
+CJK_REGULAR_WEIGHTS = ("W3", "W4", "507R", "508R", "50J", "50F", "50JF", "50W", "50S", "55J", "55F", "55JF", "55W", "55S")
 ITALIC_STYLES = ("Italic", "It", "Oblique", "Obl")
 LEGACY_WIN_STYLES = ("Regular", "Bold", "Italic", "Bold Italic")
 

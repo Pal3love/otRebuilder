@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.4.6, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.4.7, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -52,7 +52,7 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.4.6, powered by fontT
             table after conversion if UPM is different from the source.
         --macOffice: Add standard weight/slope strings into Mac English
             subfamily and remove legacy Macintosh Roman character
-            mappings in order to obtain the maximum compatibility with
+            mapping in order to obtain the maximum compatibility with
             Microsoft Office 2011 for Mac. Only enable this option when
             one or more subfamilies are missing from Mac Office 2011's
             font menu or characters outside Mac Roman are unavailable on

@@ -144,8 +144,8 @@ widthScale = 5
 # Style-linking option, for bold/italic/boldItalic replacements like MS Office.
 # No style-linking = 0, linking regular = 1,
 # Linking bold = 2, linking italic = 3, linking boldItalic = 4.
-# To ensure style-linked fonts work, please properly specify their families and subfamilies.
-# For font families with **only single subfamily**, please set it to 1.
+# To ensure style-linking work, please carefully specify family name and subfamilies.
+# For font families with **only single subfamily**, please set this option to 1.
 # styleLink = 0
 
 # Useful for IDE font selectors such as MS Visual Studio.

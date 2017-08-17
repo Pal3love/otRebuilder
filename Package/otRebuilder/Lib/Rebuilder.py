@@ -647,6 +647,8 @@ class Rebuilder(Workers.Worker):
                     for styl in Constants.REGULAR_STYLES:
                         # Use regex for case-insensitive removal
                         enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                    for styl in Constants.CJK_REGULAR_WEIGHTS:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
                 elif slCode == Constants.STYLELINK_ITALIC:
                     for styl in Constants.ITALIC_STYLES:
                         enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
