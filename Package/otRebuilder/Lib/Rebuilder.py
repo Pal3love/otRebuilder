@@ -739,8 +739,8 @@ class Rebuilder(Workers.Worker):
     # enEssentials = (enFamily, enSubfamily, uniqueID, versionStr, psName)
     def __rebuildName_addMultiLang(self, nameTableBuilder, langTag, enEssentials):
         builder = nameTableBuilder
-        style = self.config.get("Style")
         lang = self.config["Name"][langTag]
+        style = self.config.get("Style")
 
         lgcFmly = lgcSubfmly = None
         family = self.__loadUstr(lang.get("fontFamily"))
@@ -756,7 +756,8 @@ class Rebuilder(Workers.Worker):
         macPSname = enEssentials[4]      # Mac name ID 6
 
         # Deal with Windows legacy subfamily, which is the Win's mandatory item.
-        if style.get("styleLink") in range(1, 5):
+        # [Style] doesn't have to exist!
+        if style and style.get("styleLink") in range(1, 5):
             lgcFmly = family  # family might be None
             slCode = style.get("styleLink")
             lgcSubfmly = Constants.LEGACY_WIN_STYLES[slCode - 1].decode()
