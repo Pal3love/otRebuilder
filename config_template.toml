@@ -1,5 +1,5 @@
 # -- OpenType Rebuilder Configuration File --
-# -- Version: 1.4 --
+# -- Version: 1.5 --
 # -- Format: TOML --
 # -- Encoding: UTF-8(with/without BOM) --
 # -- Almost all options are **optional**. Just comment or delete any unnecessary options.--
@@ -133,7 +133,7 @@ widthScale = 5
 # OS/2.version 4 or above only
 # False: use winDescender & winAscender to decide line space
 # True: use typoAscender & typoDescender to decide line height
-# useTypoMetrics = false  
+# useTypoMetrics = false
 
 # OS/2.version 4 or above only
 # This is for Windows identification only, having no effect on platforms except Windows.

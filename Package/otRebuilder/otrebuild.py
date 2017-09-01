@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.4.11, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.5.0, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -43,21 +43,24 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.4.11, powered by font
         -o <outputFont>: Specify the output font file.
         -c <configTOML>: Specify the configuration file. It is an
             TOML-format text file and it must be UTF-8 encoded.
-        --otf2ttf <targetUPM>: For CFF-based font only. Convert a 
-            CFF-based font into TrueType font with the given units per
-            em (UPM) value. A typical UPM for TrueType is 2048. Glyph
-            bounding boxes and min/max values will be automatically
-            recalculated. This option would be ignored if a TrueType
-            font is specified. Please rebuild `GPOS`, `JSTF` and `MATH`
-            table after conversion if UPM is different from the source.
-        --macOffice: Add standard weight/slope strings into Mac English
+        --UPM <targetUPM>: Change a TrueType font's units-per-em value.
+            The entire font will be rescaled to adapt the new UPM value.
+            A typical UPM for TrueType font is 2048, and for CFF-based
+            font is 1000. UPM > 5000 will cause problems in Adobe apps
+            such as InDesign and Illustrator. `MATH` table is currently
+            not supported; please rebuild it after application.
+        --otf2ttf: For CFF-based font only. Convert a CFF-based font
+            into TrueType-outline font. Glyph bounding boxes and
+            min/max values will be automatically recalculated. This
+            option would be ignored if a TrueType font is specified.
+        --macOffice: Add standard weight strings onto Mac English
             subfamily and remove legacy Macintosh Roman character
-            mapping in order to obtain the maximum compatibility with
-            Microsoft Office 2011 for Mac. Only enable this option when
+            mapping in order to obtain maximum compatibilities with
+            Microsoft Office 2011 for Mac. ONLY enable this option when
             one or more subfamilies are missing from Mac Office 2011's
             font menu or characters outside Mac Roman are unavailable on
             Mac Office 2011. DO NOT USE for later Mac Office versions
-            nor Windows versions.
+            nor Windows Office releases.
         --refresh: Re-compile all font tables.
         --recalculate: Recalculate glyph bounding boxes, min/max values
             and Unicode ranges.
@@ -117,21 +120,22 @@ def parseArgs():
     parser.add_argument("inputFont", metavar = "inputFont", help = argparse.SUPPRESS)
     parser.add_argument("-o", metavar = "outputFont", help = argparse.SUPPRESS)
     parser.add_argument("-c", metavar = "configTOML", help = argparse.SUPPRESS)
-    parser.add_argument("--otf2ttf", metavar = "targetUPM", type = int, help = argparse.SUPPRESS)
-    parser.add_argument("--macOffice", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--refresh", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--recalculate", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--removeGlyphNames", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--removeBitmap", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--removeHinting", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--smoothRendering", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--rebuildMapping", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--allowUpgrade", action="store_true", help = argparse.SUPPRESS)
-    parser.add_argument("--dummySignature", action="store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--UPM", metavar = "targetUPM", type = int, help = argparse.SUPPRESS)
+    parser.add_argument("--otf2ttf", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--macOffice", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--refresh", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--recalculate", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--removeGlyphNames", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--removeBitmap", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--removeHinting", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--smoothRendering", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--rebuildMapping", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--allowUpgrade", action = "store_true", help = argparse.SUPPRESS)
+    parser.add_argument("--dummySignature", action = "store_true", help = argparse.SUPPRESS)
     mutexGroup = parser.add_mutually_exclusive_group()
-    mutexGroup.add_argument("--O1", action="store_true", help = argparse.SUPPRESS)
-    mutexGroup.add_argument("--O2", action="store_true", help = argparse.SUPPRESS)
-    mutexGroup.add_argument("--O3", action="store_true", help = argparse.SUPPRESS)
+    mutexGroup.add_argument("--O1", action = "store_true", help = argparse.SUPPRESS)
+    mutexGroup.add_argument("--O2", action = "store_true", help = argparse.SUPPRESS)
+    mutexGroup.add_argument("--O3", action = "store_true", help = argparse.SUPPRESS)
     args = parser.parse_args()
 
     paths = Paths()
@@ -182,6 +186,7 @@ def parseArgs():
     jobs.rebuild_macOffice = args.macOffice
     jobs.rebuild_DSIG = args.dummySignature
     jobs.convert_otf2ttf = args.otf2ttf
+    jobs.convert_changeUPM = args.UPM
     
     return paths, jobs
 
@@ -209,7 +214,8 @@ class Jobs(object):
         self.rebuild_gasp = False
         self.rebuild_prep = False
         self.rebuild_DSIG = False
-        self.convert_otf2ttf = None
+        self.convert_otf2ttf = False
+        self.convert_changeUPM = None
 
 
 def processIO(paths):
@@ -366,22 +372,22 @@ def doRebuilds(ttfontObj, jobsObj, configDict):
 
 def doConverts(ttfontObj, jobsObj):
     converter = Converter.Converter(ttfontObj, jobsObj)
-    targetUPM = jobsObj.convert_otf2ttf
-    if targetUPM:
+    targetUPM = jobsObj.convert_changeUPM
+    if jobsObj.convert_otf2ttf:
         if jobsObj.init_removeGlyphNames:
             converter.otf2ttf(
                 Constants.OTF2TTF_DFLT_MAX_ERR,
                 3.0,  # Ignore any stored glyph names.
-                Constants.OTF2TTF_DFLT_REVERSE,
-                targetUPM
+                Constants.OTF2TTF_DFLT_REVERSE
                 )
         else:
             converter.otf2ttf(
                 Constants.OTF2TTF_DFLT_MAX_ERR,
                 Constants.OTF2TTF_DFLT_POST_FORMAT,
-                Constants.OTF2TTF_DFLT_REVERSE,
-                targetUPM
+                Constants.OTF2TTF_DFLT_REVERSE
                 )
+    if targetUPM:
+        converter.changeUPM(targetUPM)
     return
 
 

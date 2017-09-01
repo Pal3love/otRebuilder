@@ -23,26 +23,16 @@ class Converter(Workers.Worker):
     def __init__(self, ttfontObj, jobsObj):
         super(Converter, self).__init__(ttfontObj, jobsObj)
 
-    def otf2ttf(self, maxErr = 1.0, postFormat = 2.0, reverseDirection = True, targetUPM = 2048):
-        # Arguments:
+    def otf2ttf(self, maxErr = 1.0, postFormat = 2.0, reverseDirection = True):
         # maxErr = 1.0, approximation error, measured in units per em (UPM).
         # postFormat = 2.0, default `post` table format.
         # reverseDirection = True, assuming the input contours' direction is correctly set (counter-clockwise), we just flip it to clockwise.
-        # targetUPM = 2048, default UPM for the new generated TrueType font. For TrueType format it should be the power of 2, from 16 to 16384.
         if self.font.sfntVersion != "OTTO" or not self.font.has_key("CFF ") or not self.font.has_key("post"):
             print("WARNING: Invalid CFF-based font. --otf2ttf is now ignored.", file = sys.stderr)
             self.jobs.convert_otf2ttf = False
             return
 
-        # Calculate scaling factor between the old and new UPM
-        upmOld = self.font["head"].unitsPerEm
-        upmNew = int(targetUPM)
-        if upmNew < 16 or upmNew > 16384:
-            print("WARNING: Invalid UPM value. Default value (2048) would be applied.", file = sys.stderr)
-            upmNew = 2048
-        scaleFactor = upmNew / upmOld  # Get float because __future__.division has been imported
-
-        # Conversion: cubic to quadratic
+        # Convert cubic to quadratic
         quadGlyphs = {}
         glyphOrder = self.font.getGlyphOrder()
         glyphSet = self.font.getGlyphSet()
@@ -50,8 +40,7 @@ class Converter(Workers.Worker):
             glyph = glyphSet[glyphName]
             ttPen = TTGlyphPen(glyphSet)
             cu2quPen = Cu2QuPen(ttPen, maxErr, reverseDirection)
-            scalePen = TransformPen(cu2quPen, Scale(scaleFactor, scaleFactor))
-            glyph.draw(scalePen)
+            glyph.draw(cu2quPen)
             quadGlyphs[glyphName] = ttPen.glyph()
 
         # Create quadratic `glyf` table
@@ -98,9 +87,6 @@ class Converter(Workers.Worker):
         post.mapping = {}
         post.glyphOrder = glyphOrder
 
-        # Update tables to apply the new UPM
-        self.__applyNewUPM(upmOld, upmNew)
-
         # Change sfntVersion from CFF to TrueType
         self.font.sfntVersion = "\x00\x01\x00\x00"
 
@@ -113,8 +99,51 @@ class Converter(Workers.Worker):
             del self.font["VORG"]
         return
 
-    # Affected tables: `head`, `hhea`, `hmtx`, `kern`, `maxp`, `post`, `vhea`, `vmtx`, `OS/2`, `BASE`
-    # ---- TODO: OpenType layout tables: `GPOS`, `JSTF`, `MATH` ----
+    def changeUPM(self, targetUPM):
+        # Calculate scaling factor between old and new UPM
+        upmOld = self.font["head"].unitsPerEm
+        upmNew = int(targetUPM)
+        if upmOld == upmNew:
+            return
+        elif upmNew < 16 or upmNew > 16384:
+            print("WARNING: Invalid UPM value. --UPM is now ignored.", file = sys.stderr)
+            return
+        elif self.font.has_key("CFF "):
+            print("WARNING: CFF-based font detected. Unfortunately it is currently not supported.", file = sys.stderr)
+            return
+        elif upmNew > 5000:
+            print("WARNING: UPM > 5000 will cause problems in Adobe InDesign and Illustrator.", file = sys.stderr)
+        else:
+            pass
+        scaleFactor = upmNew / upmOld  # Get float because __future__.division has been imported
+
+        # Conversion: re-scale all glyphs
+        scaledGlyphs = {}
+        glyphOrder = self.font.getGlyphOrder()
+        glyphSet = self.font.getGlyphSet()
+        for glyphName in glyphSet.keys():
+            glyph = glyphSet[glyphName]
+            ttPen = TTGlyphPen(glyphSet)
+            scalePen = TransformPen(ttPen, Scale(scaleFactor, scaleFactor))
+            glyph.draw(scalePen)
+            # Glyph-specific hinting will be removed upon TTGlyphPen.glyph() call.
+            scaledGlyphs[glyphName] = ttPen.glyph()
+
+        # Apply `glyf` table with scaled glyphs
+        glyf = newTable("glyf")
+        glyf.glyphOrder = glyphOrder
+        glyf.glyphs = scaledGlyphs
+        self.font["glyf"] = glyf
+
+        # Update tables to apply the new UPM
+        self.__applyNewUPM(upmOld, upmNew)
+
+        # Recalculate `head`, `glyf`, `maxp` upon compile
+        self.font.recalcBBoxes = True
+        return
+
+    # Affected tables: `head`, `hhea`, `hmtx`, `kern`, `maxp`, `post`, `vhea`, `vmtx`, `OS/2`, `BASE`, `GPOS`, `JSTF`
+    # ---- TODO: OpenType layout tables: `MATH` ----
     def __applyNewUPM(self, upmOld, upmNew):
         scaleFactor = upmNew / upmOld
         
@@ -123,12 +152,15 @@ class Converter(Workers.Worker):
         hhea = self.font.get("hhea")
         hmtx = self.font.get("hmtx")
         kern = self.font.get("kern")
-        # `maxp` will be regenerated and recalculated
+        # `maxp` will be recalculated
         post = self.font.get("post")
         vhea = self.font.get("vhea")
         vmtx = self.font.get("vmtx")
         OS2f2 = self.font.get("OS/2")
         BASE = self.font.get("BASE")
+        GPOS = self.font.get("GPOS")
+        JSTF = self.font.get("JSTF")
+        # MATH = self.font.get("MATH")
 
         # Deal with tables
         if head:
@@ -200,29 +232,164 @@ class Converter(Workers.Worker):
                 OS2f2.sCapHeight = int(round(OS2f2.sCapHeight * scaleFactor))
 
         # Deal with OpenType layout tables
-        if BASE and hasattr(BASE, "table") and BASE.table:
-            if hasattr(BASE.table, "HorizAxis"):
-                self.__applyNewUPM_handleOTaxis(BASE.table.HorizAxis, scaleFactor)
-            if hasattr(BASE.table, "VertAxis"):
-                self.__applyNewUPM_handleOTaxis(BASE.table.VertAxis, scaleFactor)
+        # Every otTable is an otBase.BaseTTXConverter object, which must have the 'table' attr.
+        if BASE and BASE.table:
+            # Both HorizAxis and VertAxis must exist.
+            self.__applyNewUPM_handleBASEaxis(BASE.table.HorizAxis, scaleFactor)
+            self.__applyNewUPM_handleBASEaxis(BASE.table.VertAxis, scaleFactor)
+        if GPOS and GPOS.table:
+            if GPOS.table.LookupList:
+                self.__applyNewUPM_handleGPOSlookups(GPOS.table.LookupList.Lookup, scaleFactor)
+        if JSTF and JSTF.table:
+            for record in JSTF.table.JstfScriptRecord:
+                if record.JstfScript:
+                    if record.JstfScript.DefJstfLangSys:
+                        self.__applyNewUPM_handleJstfLangSys(record.JstfScript.DefJstfLangSys, scaleFactor)
+                    for sysRecord in record.JstfScript.JstfLangSysRecord:
+                        self.__applyNewUPM_handleJstfLangSys(sysRecord.JstfLangSys, scaleFactor)
         return
 
-    def __applyNewUPM_handleOTaxis(self, otAxis, scaleFactor):
-        if not otAxis or \
-            not hasattr(otAxis, "BaseScriptList") or \
-            not hasattr(otAxis.BaseScriptList, "BaseScriptRecord") or \
-            not otAxis.BaseScriptList.BaseScriptRecord:
+    def __applyNewUPM_handleBASEaxis(self, axis, scaleFactor):
+        if not axis:  # Axis might be None
             return
-        for record in otAxis.BaseScriptList.BaseScriptRecord:
-            if hasattr(record, "BaseScript") and record.BaseScript:
-                if hasattr(record.BaseScript, "DefaultMinMax") and record.BaseScript.DefaultMinMax:
-                    # -- TODO: Learn the data structure here, which in most case is None --
-                    pass
-                if hasattr(record.BaseScript, "BaseValues") and \
-                    hasattr(record.BaseScript.BaseValues, "BaseCoord") and \
-                    record.BaseScript.BaseValues.BaseCoord:
+        for record in axis.BaseScriptList.BaseScriptRecord:
+            if record.BaseScript:
+                if record.BaseScript.BaseValues:
                     for coord in record.BaseScript.BaseValues.BaseCoord:
-                        if isinstance(coord.Coordinate, int) or isinstance(coord.Coordinate, float):
-                            coord.Coordinate = int(round(coord.Coordinate * scaleFactor))
+                        coord.Coordinate = int(round(coord.Coordinate * scaleFactor))
+                if record.BaseScript.DefaultMinMax:
+                    if record.BaseScript.DefaultMinMax.MinCoord:  # BaseCoord
+                        oldCoordValue = record.BaseScript.DefaultMinMax.MinCoord.Coordinate
+                        newCoordValue = int(round(oldCoordValue * scaleFactor))
+                        record.BaseScript.DefaultMinMax.MinCoord.Coordinate = newCoordValue
+                    if record.BaseScript.DefaultMinMax.MaxCoord:  # BaseCoord
+                        oldCoordValue = record.BaseScript.DefaultMinMax.MaxCoord.Coordinate
+                        newCoordValue = int(round(oldCoordValue * scaleFactor))
+                        record.BaseScript.DefaultMinMax.MaxCoord.Coordinate = newCoordValue
+                    for featRecord in record.BaseScript.DefaultMinMax.FeatMinMaxRecord:
+                        if featRecord.MinCoord:  # BaseCoord
+                            oldCoordValue = featRecord.MinCoord.Coordinate
+                            newCoordValue = int(round(oldCoordValue * scaleFactor))
+                            featRecord.MinCoord.Coordinate = newCoordValue
+                        if featRecord.MaxCoord:  # BaseCoord
+                            oldCoordValue = featRecord.MaxCoord.Coordinate
+                            newCoordValue = int(round(oldCoordValue * scaleFactor))
+                            featRecord.MaxCoord.Coordinate = newCoordValue
+        return
+
+    def __applyNewUPM_handleJstfLangSys(self, jstfLangSys, scaleFactor):
+        if not jstfLangSys:  # JstfLangSys might be None
+            return
+        for priority in jstfLangSys.JstfPriority:
+            # Other attrs are just references to `GSUB` or `GPOS` table.
+            if hasattr(priority, "ShrinkageJstfMax") and priority.ShrinkageJstfMax:
+                self.__applyNewUPM_handleGPOSlookups(priority.ShrinkageJstfMax.Lookup, scaleFactor)
+            if hasattr(priority, "ExtensionJstfMax") and priority.ExtensionJstfMax:
+                self.__applyNewUPM_handleGPOSlookups(priority.ExtensionJstfMax.Lookup, scaleFactor)
+        return
+
+    def __applyNewUPM_handleGPOSlookups(self, gsubLookups, scaleFactor):
+        if not gsubLookups:
+            return
+        for lookup in gsubLookups:
+            for sub in lookup.SubTable:
+                if lookup.LookupType in range(1, 9):
+                    self.__applyNewUPM_handleGPOSsubTable(
+                        lookup.LookupType,
+                        sub,
+                        scaleFactor
+                        )
+                elif lookup.LookupType == 9:  # ExtensionPos, format 1
+                    if sub.Format == 1:  # sub.ExtensionLookupType, sub.ExtSubTable
+                        self.__applyNewUPM_handleGPOSsubTable(
+                            sub.ExtensionLookupType,
+                            sub.ExtSubTable,
+                            scaleFactor
+                            )
+                else:
+                    pass
+        return
+
+    def __applyNewUPM_handleGPOSsubTable(self, lookupType, subTable, scaleFactor):
+        if not subTable or not lookupType:
+            return
+        if lookupType == 1:  # SinglePos, format 1, 2
+            # Attr here is 'Format', not 'PosFormat'
+            if subTable.Format == 1:  # subTable.Value == ValueRecord
+                self.__applyNewUPM_handleValueRecord(subTable.Value, scaleFactor)
+            elif subTable.Format == 2:  # subTable.Value == ValueRecord[]
+                for valRecord in subTable.Value:
+                    self.__applyNewUPM_handleValueRecord(valRecord, scaleFactor)
+            else:
+                pass
+        elif lookupType == 2:  # PairPos, format 1, 2
+            if subTable.Format == 1:  # subTable.PairSet[].PairValueRecord[]
+                for pair in subTable.PairSet:
+                    for pairValRec in pair.PairValueRecord:
+                        self.__applyNewUPM_handleValueRecord(pairValRec.Value1, scaleFactor)
+                        self.__applyNewUPM_handleValueRecord(pairValRec.Value2, scaleFactor)
+            elif subTable.Format == 2:  # subTable.Class1Record[].Class2Record[]
+                for cls1Rec in subTable.Class1Record:
+                    for cls2Rec in cls1Rec.Class2Record:
+                        self.__applyNewUPM_handleValueRecord(cls2Rec.Value1, scaleFactor)
+                        self.__applyNewUPM_handleValueRecord(cls2Rec.Value2, scaleFactor)
+            else:
+                pass
+        elif lookupType == 3:  # CursivePos, format 1
+            if subTable.Format == 1:  # subTable.EntryExitRecord[]
+                for eeRec in subTable.EntryExitRecord:
+                    self.__applyNewUPM_handleAnchor(eeRec.EntryAnchor, scaleFactor)
+                    self.__applyNewUPM_handleAnchor(eeRec.ExitAnchor, scaleFactor)
+        elif lookupType == 4:  # MarkBasePos, format 1
+            if subTable.Format == 1:  # subTable.MarkArray, subTable.BaseArray
+                for markRec in subTable.MarkArray.MarkRecord:
+                    self.__applyNewUPM_handleAnchor(markRec.MarkAnchor, scaleFactor)
+                for baseRec in subTable.BaseArray.BaseRecord:
+                    for anchor in baseRec.BaseAnchor:
+                        self.__applyNewUPM_handleAnchor(anchor, scaleFactor)
+        elif lookupType == 5:  # MarkLigPos, format 1
+            if subTable.Format == 1:  # subTable.MarkArray, subTable.LigatureArray
+                for markRec in subTable.MarkArray.MarkRecord:
+                    self.__applyNewUPM_handleAnchor(markRec.MarkAnchor, scaleFactor)
+                for ligAttach in subTable.LigatureArray.LigatureAttach:
+                    for cmpntRec in ligAttach.ComponentRecord:
+                        for anchor in cmpntRec.LigatureAnchor:
+                            self.__applyNewUPM_handleAnchor(anchor, scaleFactor)
+        elif lookupType == 6:  # MarkMarkPos, format 1
+            if subTable.Format == 1:  # subTable.Mark1Array == MarkArray, subTable.Mark2Array
+                for markRec in subTable.Mark1Array.MarkRecord:
+                    self.__applyNewUPM_handleAnchor(markRec.MarkAnchor, scaleFactor)
+                for mark2Rec in subTable.Mark2Array.Mark2Record:
+                    for anchor in mark2Rec.Mark2Anchor:
+                        self.__applyNewUPM_handleAnchor(anchor, scaleFactor)
+        elif lookupType == 7:  # ContextPos, format 1, 2, 3
+            pass  # It will eventually reference to another lookup, type 1-6.
+        elif lookupType == 8:  # ChainContextPos, format 1, 2, 3
+            pass  # It will eventually reference to another lookup, type 1-6.
+        else:
+            pass
+        return
+
+    def __applyNewUPM_handleAnchor(self, anchor, scaleFactor):
+        if not anchor:
+            return
+        if hasattr(anchor, "XCoordinate") and anchor.XCoordinate:
+            anchor.XCoordinate = int(round(anchor.XCoordinate * scaleFactor))
+        if hasattr(anchor, "YCoordinate") and anchor.YCoordinate:
+            anchor.YCoordinate = int(round(anchor.YCoordinate * scaleFactor))
+        return
+
+    # The ValueRecord here is otBase.ValueRecord class, not the one presented in otData.
+    def __applyNewUPM_handleValueRecord(self, valueRecord, scaleFactor):
+        if not valueRecord:
+            return
+        if hasattr(valueRecord, "XPlacement") and valueRecord.XPlacement:
+            valueRecord.XPlacement = int(round(valueRecord.XPlacement * scaleFactor))
+        if hasattr(valueRecord, "YPlacement") and valueRecord.YPlacement:
+            valueRecord.YPlacement = int(round(valueRecord.YPlacement * scaleFactor))
+        if hasattr(valueRecord, "XAdvance") and valueRecord.XAdvance:
+            valueRecord.XAdvance = int(round(valueRecord.XAdvance * scaleFactor))
+        if hasattr(valueRecord, "YAdvance") and valueRecord.YAdvance:
+            valueRecord.YAdvance = int(round(valueRecord.YAdvance * scaleFactor))
         return
 

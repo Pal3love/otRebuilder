@@ -369,43 +369,31 @@ class Rebuilder(Workers.Worker):
                 if OS2f2T.panose.bFamilyType in [2, 3, 4]:
                     OS2f2T.panose.bWeight = weightScale + 1
                 OS2f2T.fsSelection &= ~0b1111110  # Clear regular, bold and legacy bits
-                if weightScale == 4:
+                # Set fsSelection to regular only when usWeightClass == 400 and fsSelection != italic.
+                if (weightScale == 4) and not (OS2f2T.fsSelection & 1):
                     OS2f2T.fsSelection |= 1<<6
+                # We don't worry about fsSelection == boldItalic.
                 elif weightScale > 6:
                     OS2f2T.fsSelection |= 1<<5
                 else:
                     pass
             if styleLink in range(0, 5):
-                OS2f2T.fsSelection &= ~1  # Clear italic bit
                 if styleLink == Constants.STYLELINK_REGULAR:
-                    OS2f2T.fsSelection |= 1<<6
-                    if not weightScale:
-                        OS2f2T.usWeightClass = 400
-                        OS2f2T.fsSelection &= ~0b0111111
-                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
-                            OS2f2T.panose.bWeight = 5
+                    # Regular style-link doesn't have to set fsSelection to regular, such as
+                    # Arial Nova Light (none) or Arial Nova Black (bold).
+                    OS2f2T.fsSelection &= ~0b0011111
                 elif styleLink == Constants.STYLELINK_BOLD:
+                    # But bold style-link does.
                     OS2f2T.fsSelection |= 1<<5
-                    if not weightScale:
-                        OS2f2T.usWeightClass = 700
-                        OS2f2T.fsSelection &= ~0b1011111
-                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
-                            OS2f2T.panose.bWeight = 8
+                    OS2f2T.fsSelection &= ~0b1011111
                 elif styleLink == Constants.STYLELINK_ITALIC:
+                    # For italic style-link the fsSelection regular must be turned off.
                     OS2f2T.fsSelection |= 1
-                    if not weightScale:
-                        OS2f2T.usWeightClass = 400
-                        OS2f2T.fsSelection &= ~0b1111110
-                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
-                            OS2f2T.panose.bWeight = 5
+                    OS2f2T.fsSelection &= ~0b1011110
                 elif styleLink == Constants.STYLELINK_BOLDITALIC:
                     OS2f2T.fsSelection |= 1<<5
                     OS2f2T.fsSelection |= 1
-                    if not weightScale:
-                        OS2f2T.usWeightClass = 700
-                        OS2f2T.fsSelection &= ~0b1011110
-                        if OS2f2T.panose.bFamilyType in [2, 3, 4]:
-                            OS2f2T.panose.bWeight = 8
+                    OS2f2T.fsSelection &= ~0b1011110
                 else:  # Constants.STYLELINK_NONE
                     pass
             if isinstance(useTypoMetrics, bool) and \
