@@ -533,16 +533,17 @@ class NameTableBuilder(object):
             self.addNameEx(self.__pscidffustr, 20, 1, macPltEncID, 65535)
         return
 
-    # This is rather undocumented in the spec: string length of nameID 1 must be less than 32, 
+    # This is undocumented in OT spec: string length of Windows nameID 1 must be less than 32, 
     # otherwise the font will not load in Windows.
+    # UPDATE: Windows 10 no longer requires this.
     def __truncateLimitedExs(self):
         exSetArray = [self.__macExs, self.__winSymExs, self.__winBMPExs, self.__winFulExs, self.__winLgcExs, self.__miscExs]
         for exSet in exSetArray:
             for ex in exSet:
                 string = ex.getString()
-                if ex.getNameID() == 1 and len(string) > 31:
-                    print("WARNING: Legacy family name is longer than 31 characters. It will be truncated.", file = sys.stderr)
-                    print("Legacy family name: " + string, file = sys.stderr)
+                if ex.getPlatformID() == 3 and ex.getNameID() == 1 and len(string) > 31:
+                    print("WARNING: Windows legacy family name is longer than 31 characters. It will be truncated.", file = sys.stderr)
+                    print("Windows legacy family name: " + string, file = sys.stderr)
                     ex.setString(string[:31])
                 elif ex.getNameID() == 6 and len(string) > 63:
                     print("WARNING: PostScript name is longer than 63 bytes. It will be truncated.", file = sys.stderr)
