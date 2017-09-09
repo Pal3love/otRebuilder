@@ -168,6 +168,15 @@ class Fixer(Workers.Worker):
                     unsupported.append(namRec)
             else:
                 unsupported.append(namRec)
+        # The following order must be Win->Mac then Mac->Win!
+        # Convert Win names into Mac
+        for namRec in winNamRecs:
+            if namRec.nameID in [16, 17]:
+                continue  # Macintosh platform doesn't need preferred family/subfamily.
+            tmpMacRec = Workers.NameWorker.winName2Mac(namRec)
+            if tmpMacRec is None:
+                continue  
+            builder.addMacNameEx(tmpMacRec.string, tmpMacRec.nameID, tmpMacRec.langID)
         # Convert Mac names into Win
         for namRec in macNamRecs:
             if namRec.nameID == 18:
@@ -177,14 +186,6 @@ class Fixer(Workers.Worker):
                 continue
             for tmpWinRec in tmpWinRecs:
                 builder.addWinNameEx(tmpWinRec.string, tmpWinRec.nameID, tmpWinRec.langID)
-        # Convert Win names into Mac
-        for namRec in winNamRecs:
-            if namRec.nameID in [16, 17]:
-                continue  # Macintosh platform doesn't need preferred family/subfamily.
-            tmpMacRec = Workers.NameWorker.winName2Mac(namRec)
-            if tmpMacRec is None:
-                continue  
-            builder.addMacNameEx(tmpMacRec.string, tmpMacRec.nameID, tmpMacRec.langID)
         # Update the `name` table with `cmap` consistency
         name = builder.build(cmap)
         name.names.extend(unsupported)
