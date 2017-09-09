@@ -171,6 +171,8 @@ class Fixer(Workers.Worker):
         # The following order must be Win->Mac then Mac->Win!
         # Convert Win names into Mac
         for namRec in winNamRecs:
+            # Add complete Win names (winBMP, winSym, winFul)
+            builder.addWinNameEx(namRec.string, namRec.nameID, namRec.langID)
             if namRec.nameID in [16, 17]:
                 continue  # Macintosh platform doesn't need preferred family/subfamily.
             tmpMacRec = Workers.NameWorker.winName2Mac(namRec)
