@@ -46,9 +46,11 @@ STYLELINK_BOLDITALIC = 4
 
 # Style Strings
 REGULAR_STYLES = ("Regular", "Rg", "Roman", "Rm", "R", "Normal", "Norm", "Nm", "Book", "Bk")
-CJK_REGULAR_WEIGHTS = ("W3", "W4", "507R", "508R", "50J", "50F", "50JF", "50W", "50S", "55J", "55F", "55JF", "55W", "55S")
+BOLD_STYLES = ("Bold", "Bd", "B")
 ITALIC_STYLES = ("Italic", "It", "Oblique", "Obl")
 LEGACY_WIN_STYLES = ("Regular", "Bold", "Italic", "Bold Italic")
+CJK_REGULAR_WEIGHTS = ("W3", "W4", "507R", "508R", "50J", "50F", "50JF", "50W", "50S", "55J", "55F", "55JF", "55W", "55S")
+CJK_BOLD_WEIGHTS = ("W6", "W7", "511M", "512B", "70J", "70F", "70JF", "70W", "70S", "75J", "75F", "75JF", "75W", "75S")
 
 # Weight/Width Scales and Strings
 WIDTH_SCALES = (1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -56,7 +58,7 @@ ABBREVIATED_WIDTHS = ("UCond", "XCond", "Cond", "DCond", "M", "DExt", "Ext", "XE
 STANDARD_WIDTHS = ("Ultra-condensed ", "Extra-condensed", "Condensed", "Semi-condensed", "Medium", "Semi-expanded", "Expanded", "Extra-expanded", "Ultra-expanded")
 WIN_SAFE_WEIGHT_SCALES = (250, 275, 300, 400, 500, 600, 700, 800, 900, 950)
 STANDARD_WEIGHT_SCALES = (100, 200, 300, 400, 500, 600, 700, 800, 900, 1000)
-ABBREVIATED_WEIGHTS = ("UL", "EL", "L", "R", "M", "DB", "B", "EB", "H", "BL")
+ABBREVIATED_WEIGHTS = ("UL", "EL", "L", "R", "M", "SB", "B", "EB", "H", "BL")
 STANDARD_WEIGHTS = ("Ultralight", "Extralight", "Light", "Regular", "Medium", "Semibold", "Bold", "Extrabold", "Heavy", "Black")
 
 

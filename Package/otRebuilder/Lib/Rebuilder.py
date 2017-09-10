@@ -630,15 +630,29 @@ class Rebuilder(Workers.Worker):
             enLgcFmly = enFamily + u" " + enSubfamily
             if style:
                 slCode = style.get("styleLink")
-                if slCode in [2, 4]:
-                    enLgcFmly = enFamily
-                elif slCode == Constants.STYLELINK_REGULAR:
+                if slCode == Constants.STYLELINK_REGULAR:
                     for styl in Constants.REGULAR_STYLES:
                         # Use regex for case-insensitive removal
                         enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
                     for styl in Constants.CJK_REGULAR_WEIGHTS:
                         enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
-                elif slCode == Constants.STYLELINK_ITALIC:
+                elif slCode == Constants.STYLELINK_BOLD:
+                    for styl in Constants.BOLD_STYLES:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                    for styl in Constants.CJK_BOLD_WEIGHTS:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                elif slCode == Constants.STYLELINK_ITALIC:  # Which represents for "Regular Italic"
+                    for styl in Constants.REGULAR_STYLES:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                    for styl in Constants.CJK_REGULAR_WEIGHTS:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                    for styl in Constants.ITALIC_STYLES:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                elif slCode == Constants.STYLELINK_BOLDITALIC:
+                    for styl in Constants.BOLD_STYLES:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
+                    for styl in Constants.CJK_BOLD_WEIGHTS:
+                        enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
                     for styl in Constants.ITALIC_STYLES:
                         enLgcFmly = re.sub(r"(?i)\b" + styl + r"\b", "", enLgcFmly)
                 else:

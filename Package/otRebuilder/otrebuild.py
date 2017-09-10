@@ -24,7 +24,7 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.5.3, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.5.4, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
@@ -50,7 +50,7 @@ descriptionStr = """    OpenType Font Rebuilder: Version 1.5.3, powered by fontT
             such as InDesign and Illustrator. `MATH` table is currently
             not supported; please rebuild it after application.
         --otf2ttf: For CFF-based font only. Convert a CFF-based font
-            into TrueType-outline font. Glyph bounding boxes and
+            into a TrueType-outline font. Glyph bounding boxes and
             min/max values will be automatically recalculated. This
             option would be ignored if a TrueType font is specified.
         --macOffice: Add standard weight strings onto Mac English

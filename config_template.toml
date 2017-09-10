@@ -2,6 +2,7 @@
 # -- Version: 1.5 --
 # -- Format: TOML --
 # -- Encoding: UTF-8(with/without BOM) --
+# -- This configuration file is CASE-SENSITIVE. --
 # -- Almost all options are **optional**. Just comment or delete any unnecessary options.--
 
 
