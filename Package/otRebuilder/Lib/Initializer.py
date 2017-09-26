@@ -111,8 +111,8 @@ class Initializer(Workers.Worker):
             self.jobs.rebuild_prep = False
         if self.font.has_key("glyf"):
             glyf = self.font["glyf"]
-            for key in glyf.keys():
-                glyf[key].removeHinting()
+            for value in glyf.glyphs.values():
+                value.removeHinting()
         if self.font.has_key("cvt "):
             del self.font["cvt "]
         if self.font.has_key("fpgm"):

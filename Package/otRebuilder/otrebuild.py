@@ -24,16 +24,16 @@ from otRebuilder.Lib import Constants
 
 
 usageStr = "usage: otrebuild [options] <inputFont>"
-descriptionStr = """    OpenType Font Rebuilder: Version 1.5.4, powered by fontTools
+descriptionStr = """    OpenType Font Rebuilder: Version 1.5.5, powered by fontTools
 
     This is a simple tool to resolve naming, styling and mapping issues
         among OpenType fonts. Without any options given, it can scan and
         maintain metedata consistencies among font tables; with a simple
         but powerful configuration file, all intricate data fields
-        within font tables such as `name`, `head`, `OS/2` can be
+        between font tables such as `name`, `head`, `OS/2` can be
         automatically generated without compromising platform-specific
-        compatibilities. It also supplies extra useful functionalities
-        to simplify the OpenType font packaging workflow.
+        compatibility. It also supplies extra useful functionalities
+        to simplify multilingual OpenType font packaging workflow.
 
     TrueType and OpenType fonts are both supported. Output files are
         always created with different names, so an existing file is
