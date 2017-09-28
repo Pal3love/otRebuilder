@@ -103,12 +103,13 @@ class Converter(Workers.Worker):
         # Calculate scaling factor between old and new UPM
         upmOld = self.font["head"].unitsPerEm
         upmNew = int(targetUPM)
+        isCubic = self.font.has_key("CFF ")
         if upmOld == upmNew:
             return
         elif upmNew < 16 or upmNew > 16384:
             print("WARNING: Invalid UPM value. --UPM is now ignored.", file = sys.stderr)
             return
-        elif self.font.has_key("CFF "):
+        elif isCubic:
             print("WARNING: CFF-based font detected. Unfortunately it is currently not supported.", file = sys.stderr)
             return
         elif upmNew > 5000:
@@ -123,11 +124,23 @@ class Converter(Workers.Worker):
         glyphSet = self.font.getGlyphSet()
         for glyphName in glyphSet.keys():
             glyph = glyphSet[glyphName]
-            ttPen = TTGlyphPen(glyphSet)
-            scalePen = TransformPen(ttPen, Scale(scaleFactor, scaleFactor))
-            glyph.draw(scalePen)
+            if isCubic:  # TODO: `CFF `
+                # basePen = OTGlyphPen(glyphSet)
+                pass
+            else:  # `glyf`
+                basePen = TTGlyphPen(glyphSet)
+            scalePen = TransformPen(basePen, Scale(scaleFactor, scaleFactor))
+            # Deal with quad composites (all cubics are not affected)
+            if not isCubic and glyph._glyph.isComposite():  # Scale each component's xy offset
+                glyph.draw(basePen)
+                for i in range(len(basePen.components)):
+                    componentName, oldTrans = basePen.components[i]
+                    newTrans = (oldTrans[0], oldTrans[1], oldTrans[2], oldTrans[3], oldTrans[4] * scaleFactor, oldTrans[5] * scaleFactor)
+                    basePen.components[i] = (componentName, newTrans)
+            else:  # Scale all cubics or base quads so that their composites will not be scaled multiple times
+                glyph.draw(scalePen)
             # Glyph-specific hinting will be removed upon TTGlyphPen.glyph() call.
-            scaledGlyphs[glyphName] = ttPen.glyph()
+            scaledGlyphs[glyphName] = basePen.glyph()
 
         # Apply `glyf` table with scaled glyphs
         glyf = newTable("glyf")
