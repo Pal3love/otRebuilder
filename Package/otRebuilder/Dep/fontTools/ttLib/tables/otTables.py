@@ -1,10 +1,11 @@
+# coding: utf-8
 """fontTools.ttLib.tables.otTables -- A collection of classes representing the various
 OpenType subtables.
 
 Most are constructed upon import from data in otData.py, all are populated with
 converter objects from otConverters.py.
 """
-from __future__ import print_function, division, absolute_import
+from __future__ import print_function, division, absolute_import, unicode_literals
 from fontTools.misc.py23 import *
 from fontTools.misc.textTools import safeEval
 from .otBase import BaseTable, FormatSwitchingBaseTable
@@ -14,6 +15,176 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
+class AATStateTable(object):
+	def __init__(self):
+		self.GlyphClasses = {}  # GlyphID --> GlyphClass
+		self.States = []  # List of AATState, indexed by state number
+		self.PerGlyphLookups = []  # [{GlyphID:GlyphID}, ...]
+
+
+class AATState(object):
+	def __init__(self):
+		self.Transitions = {}  # GlyphClass --> AATAction
+
+
+class AATAction(object):
+	_FLAGS = None
+
+	def _writeFlagsToXML(self, xmlWriter):
+		flags = [f for f in self._FLAGS if self.__dict__[f]]
+		if flags:
+			xmlWriter.simpletag("Flags", value=",".join(flags))
+			xmlWriter.newline()
+		if self.ReservedFlags != 0:
+			xmlWriter.simpletag(
+				"ReservedFlags",
+				value='0x%04X' % self.ReservedFlags)
+			xmlWriter.newline()
+
+	def _setFlag(self, flag):
+		assert flag in self._FLAGS, "unsupported flag %s" % flag
+		self.__dict__[flag] = True
+
+
+class RearrangementMorphAction(AATAction):
+	staticSize = 4
+	_FLAGS = ["MarkFirst", "DontAdvance", "MarkLast"]
+
+	_VERBS = {
+		0: "no change",
+		1: "Ax ⇒ xA",
+		2: "xD ⇒ Dx",
+		3: "AxD ⇒ DxA",
+		4: "ABx ⇒ xAB",
+		5: "ABx ⇒ xBA",
+		6: "xCD ⇒ CDx",
+		7: "xCD ⇒ DCx",
+		8: "AxCD ⇒ CDxA",
+		9: "AxCD ⇒ DCxA",
+		10: "ABxD ⇒ DxAB",
+		11: "ABxD ⇒ DxBA",
+		12: "ABxCD ⇒ CDxAB",
+		13: "ABxCD ⇒ CDxBA",
+		14: "ABxCD ⇒ DCxAB",
+		15: "ABxCD ⇒ DCxBA",
+        }
+
+	def __init__(self):
+		self.NewState = 0
+		self.Verb = 0
+		self.MarkFirst = False
+		self.DontAdvance = False
+		self.MarkLast = False
+		self.ReservedFlags = 0
+
+	def compile(self, writer, font):
+		writer.writeUShort(self.NewState)
+		assert self.Verb >= 0 and self.Verb <= 15, self.Verb
+		flags = self.Verb | self.ReservedFlags
+		if self.MarkFirst: flags |= 0x8000
+		if self.DontAdvance: flags |= 0x4000
+		if self.MarkLast: flags |= 0x2000
+		writer.writeUShort(flags)
+
+	def decompile(self, reader, font):
+		self.NewState = reader.readUShort()
+		flags = reader.readUShort()
+		self.Verb = flags & 0xF
+		self.MarkFirst = bool(flags & 0x8000)
+		self.DontAdvance = bool(flags & 0x4000)
+		self.MarkLast = bool(flags & 0x2000)
+		self.ReservedFlags = flags & 0x1FF0
+
+	def toXML(self, xmlWriter, font, attrs, name):
+		xmlWriter.begintag(name, **attrs)
+		xmlWriter.newline()
+		xmlWriter.simpletag("NewState", value=self.NewState)
+		xmlWriter.newline()
+		self._writeFlagsToXML(xmlWriter)
+		xmlWriter.simpletag("Verb", value=self.Verb)
+		verbComment = self._VERBS.get(self.Verb)
+		if verbComment is not None:
+			xmlWriter.comment(verbComment)
+		xmlWriter.newline()
+		xmlWriter.endtag(name)
+		xmlWriter.newline()
+
+	def fromXML(self, name, attrs, content, font):
+		self.NewState = self.Verb = self.ReservedFlags = 0
+		self.MarkFirst = self.DontAdvance = self.MarkLast = False
+		content = [t for t in content if isinstance(t, tuple)]
+		for eltName, eltAttrs, eltContent in content:
+			if eltName == "NewState":
+				self.NewState = safeEval(eltAttrs["value"])
+			elif eltName == "Verb":
+				self.Verb = safeEval(eltAttrs["value"])
+			elif eltName == "ReservedFlags":
+				self.ReservedFlags = safeEval(eltAttrs["value"])
+			elif eltName == "Flags":
+				for flag in eltAttrs["value"].split(","):
+					self._setFlag(flag.strip())
+
+
+class ContextualMorphAction(AATAction):
+	staticSize = 8
+	_FLAGS = ["SetMark", "DontAdvance"]
+
+	def __init__(self):
+		self.NewState = 0
+		self.SetMark, self.DontAdvance = False, False
+		self.ReservedFlags = 0
+		self.MarkIndex, self.CurrentIndex = 0xFFFF, 0xFFFF
+
+	def compile(self, writer, font):
+		writer.writeUShort(self.NewState)
+		flags = self.ReservedFlags
+		if self.SetMark: flags |= 0x8000
+		if self.DontAdvance: flags |= 0x4000
+		writer.writeUShort(flags)
+		writer.writeUShort(self.MarkIndex)
+		writer.writeUShort(self.CurrentIndex)
+
+	def decompile(self, reader, font):
+		self.NewState = reader.readUShort()
+		flags = reader.readUShort()
+		self.SetMark = bool(flags & 0x8000)
+		self.DontAdvance = bool(flags & 0x4000)
+		self.ReservedFlags = flags & 0x3FFF
+		self.MarkIndex = reader.readUShort()
+		self.CurrentIndex = reader.readUShort()
+
+	def toXML(self, xmlWriter, font, attrs, name):
+		xmlWriter.begintag(name, **attrs)
+		xmlWriter.newline()
+		xmlWriter.simpletag("NewState", value=self.NewState)
+		xmlWriter.newline()
+		self._writeFlagsToXML(xmlWriter)
+		xmlWriter.simpletag("MarkIndex", value=self.MarkIndex)
+		xmlWriter.newline()
+		xmlWriter.simpletag("CurrentIndex",
+		                    value=self.CurrentIndex)
+		xmlWriter.newline()
+		xmlWriter.endtag(name)
+		xmlWriter.newline()
+
+	def fromXML(self, name, attrs, content, font):
+		self.NewState = self.ReservedFlags = 0
+		self.SetMark = self.DontAdvance = False
+		self.MarkIndex, self.CurrentIndex = 0xFFFF, 0xFFFF
+		content = [t for t in content if isinstance(t, tuple)]
+		for eltName, eltAttrs, eltContent in content:
+			if eltName == "NewState":
+				self.NewState = safeEval(eltAttrs["value"])
+			elif eltName == "Flags":
+				for flag in eltAttrs["value"].split(","):
+					self._setFlag(flag.strip())
+			elif eltName == "ReservedFlags":
+				self.ReservedFlags = safeEval(eltAttrs["value"])
+			elif eltName == "MarkIndex":
+				self.MarkIndex = safeEval(eltAttrs["value"])
+			elif eltName == "CurrentIndex":
+				self.CurrentIndex = safeEval(eltAttrs["value"])
 
 class FeatureParams(BaseTable):
 
@@ -649,7 +820,6 @@ class LigatureSubst(FormatSwitchingBaseTable):
 			ligs.append(lig)
 
 
-#
 # For each subtable format there is a class. However, we don't really distinguish
 # between "field name" and "format name": often these are the same. Yet there's
 # a whole bunch of fields with different names. The following dict is a mapping
@@ -991,13 +1161,16 @@ def _buildClasses():
 			8: ChainContextPos,
 			9: ExtensionPos,
 		},
+		'mort': {
+			4: NoncontextualMorph,
+		},
 		'morx': {
 			0: RearrangementMorph,
 			1: ContextualMorph,
-			2: LigatureMorph,
+			# 2: LigatureMorph,
 			# 3: Reserved,
 			4: NoncontextualMorph,
-			5: InsertionMorph,
+			# 5: InsertionMorph,
 		},
 	}
 	lookupTypes['JSTF'] = lookupTypes['GPOS']  # JSTF contains GPOS

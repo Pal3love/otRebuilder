@@ -1186,6 +1186,90 @@ otData = [
 		('uint16', 'value', None, None, 'A 16-bit offset from the start of the table to the data.'),
 	]),
 
+
+	#
+	# ankr
+	#
+
+	('ankr', [
+		('struct', 'AnchorPoints', None, None, 'Anchor points table.'),
+        ]),
+
+	('AnchorPointsFormat0', [
+		('uint16', 'Format', None, None, 'Format of the anchor points table, = 0.'),
+		('uint16', 'Flags', None, None, 'Flags. Currenty unused, set to zero.'),
+		('AATLookupWithDataOffset(AnchorGlyphData)', 'Anchors', None, None, 'Table of with anchor overrides for each glyph.'),
+	]),
+
+	('AnchorGlyphData', [
+		('uint32', 'AnchorPointCount', None, None, 'Number of anchor points for this glyph.'),
+		('struct', 'AnchorPoint', 'AnchorPointCount', 0, 'Individual anchor points.'),
+	]),
+
+	('AnchorPoint', [
+		('int16', 'XCoordinate', None, None, 'X coordinate of this anchor point.'),
+		('int16', 'YCoordinate', None, None, 'Y coordinate of this anchor point.'),
+	]),
+
+	#
+	# bsln
+	#
+
+	('bsln', [
+		('Version', 'Version', None, None, 'Version number of the AAT baseline table (0x00010000 for the initial version).'),
+		('struct', 'Baseline', None, None, 'Baseline table.'),
+	]),
+
+	('BaselineFormat0', [
+		('uint16', 'Format', None, None, 'Format of the baseline table, = 0.'),
+		('uint16', 'DefaultBaseline', None, None, 'Default baseline value for all glyphs. This value can be from 0 through 31.'),
+		('uint16', 'Delta', 32, 0, u'These are the FUnit distance deltas from the font’s natural baseline to the other baselines used in the font. A total of 32 deltas must be assigned.'),
+	]),
+
+	('BaselineFormat1', [
+		('uint16', 'Format', None, None, 'Format of the baseline table, = 1.'),
+		('uint16', 'DefaultBaseline', None, None, 'Default baseline value for all glyphs. This value can be from 0 through 31.'),
+		('uint16', 'Delta', 32, 0, u'These are the FUnit distance deltas from the font’s natural baseline to the other baselines used in the font. A total of 32 deltas must be assigned.'),
+		('AATLookup(uint16)', 'BaselineValues', None, None, 'Lookup table that maps glyphs to their baseline values.'),
+	]),
+
+	('BaselineFormat2', [
+		('uint16', 'Format', None, None, 'Format of the baseline table, = 1.'),
+		('uint16', 'DefaultBaseline', None, None, 'Default baseline value for all glyphs. This value can be from 0 through 31.'),
+		('GlyphID', 'StandardGlyph', None, None, 'Glyph index of the glyph in this font to be used to set the baseline values. This glyph must contain a set of control points (whose numbers are contained in the following field) that determines baseline distances.'),
+		('uint16', 'ControlPoint', 32, 0, 'Array of 32 control point numbers, associated with the standard glyph. A value of 0xFFFF means there is no corresponding control point in the standard glyph.'),
+	]),
+
+	('BaselineFormat3', [
+		('uint16', 'Format', None, None, 'Format of the baseline table, = 1.'),
+		('uint16', 'DefaultBaseline', None, None, 'Default baseline value for all glyphs. This value can be from 0 through 31.'),
+		('GlyphID', 'StandardGlyph', None, None, 'Glyph index of the glyph in this font to be used to set the baseline values. This glyph must contain a set of control points (whose numbers are contained in the following field) that determines baseline distances.'),
+		('uint16', 'ControlPoint', 32, 0, 'Array of 32 control point numbers, associated with the standard glyph. A value of 0xFFFF means there is no corresponding control point in the standard glyph.'),
+		('AATLookup(uint16)', 'BaselineValues', None, None, 'Lookup table that maps glyphs to their baseline values.'),
+	]),
+
+
+	#
+	# cidg
+	#
+
+	('cidg', [
+		('struct', 'CIDGlyphMapping', None, None, 'CID-to-glyph mapping table.'),
+        ]),
+
+	('CIDGlyphMappingFormat0', [
+		('uint16', 'Format', None, None, 'Format of the CID-to-glyph mapping table, = 0.'),
+		('uint16', 'DataFormat', None, None, 'Currenty unused, set to zero.'),
+		('uint32', 'StructLength', None, None, 'Size of the table in bytes.'),
+		('uint16', 'Registry', None, None, 'The registry ID.'),
+		('char64', 'RegistryName', None, None, 'The registry name in ASCII; unused bytes should be set to 0.'),
+		('uint16', 'Order', None, None, 'The order ID.'),
+		('char64', 'OrderName', None, None, 'The order name in ASCII; unused bytes should be set to 0.'),
+		('uint16', 'SupplementVersion', None, None, 'The supplement version.'),
+		('CIDGlyphMap', 'Mapping', None, None, 'A mapping from CIDs to the glyphs in the font, starting with CID 0. If a CID from the identified collection has no glyph in the font, 0xFFFF is used'),
+	]),
+
+
 	#
 	# feat
 	#
@@ -1221,41 +1305,101 @@ otData = [
 
 
 	#
+	# gcid
+	#
+
+	('gcid', [
+		('struct', 'GlyphCIDMapping', None, None, 'Glyph to CID mapping table.'),
+        ]),
+
+	('GlyphCIDMappingFormat0', [
+		('uint16', 'Format', None, None, 'Format of the glyph-to-CID mapping table, = 0.'),
+		('uint16', 'DataFormat', None, None, 'Currenty unused, set to zero.'),
+		('uint32', 'StructLength', None, None, 'Size of the table in bytes.'),
+		('uint16', 'Registry', None, None, 'The registry ID.'),
+		('char64', 'RegistryName', None, None, 'The registry name in ASCII; unused bytes should be set to 0.'),
+		('uint16', 'Order', None, None, 'The order ID.'),
+		('char64', 'OrderName', None, None, 'The order name in ASCII; unused bytes should be set to 0.'),
+		('uint16', 'SupplementVersion', None, None, 'The supplement version.'),
+		('GlyphCIDMap', 'Mapping', None, None, 'The CIDs for the glyphs in the font, starting with glyph 0. If a glyph does not correspond to a CID in the identified collection, 0xFFFF is used'),
+	]),
+
+
+	#
 	# lcar
 	#
 
 	('lcar', [
 		('Version', 'Version', None, None, 'Version number of the ligature caret table (0x00010000 for the initial version).'),
+		('struct', 'LigatureCarets', None, None, 'Ligature carets table.'),
+        ]),
+
+	('LigatureCaretsFormat0', [
 		('uint16', 'Format', None, None, 'Format of the ligature caret table. Format 0 indicates division points are distances in font units, Format 1 indicates division points are indexes of control points.'),
-		('AATLookup(LigCaretClassEntry)', 'Carets', None, None, 'Lookup table associating glyphs with LigCaretClassEntry records.'),
+		('AATLookup(LigCaretDistances)', 'Carets', None, None, 'Lookup table associating ligature glyphs with their caret positions, in font unit distances.'),
 	]),
 
-	('LigCaretClassEntry', [
+	('LigatureCaretsFormat1', [
+		('uint16', 'Format', None, None, 'Format of the ligature caret table. Format 0 indicates division points are distances in font units, Format 1 indicates division points are indexes of control points.'),
+		('AATLookup(LigCaretPoints)', 'Carets', None, None, 'Lookup table associating ligature glyphs with their caret positions, as control points.'),
+	]),
+
+	('LigCaretDistances', [
 		('uint16', 'DivsionPointCount', None, None, 'Number of division points.'),
-		('int16', 'DivisionPoint', 'DivsionPointCount', 0, 'Distance in font units (format 0), or the control point number (format 1), through which a subdivision is made orthogonally to the baseline.'),
+		('int16', 'DivisionPoint', 'DivsionPointCount', 0, 'Distance in font units through which a subdivision is made orthogonally to the baseline.'),
 	]),
 
+	('LigCaretPoints', [
+		('uint16', 'DivsionPointCount', None, None, 'Number of division points.'),
+		('int16', 'DivisionPoint', 'DivsionPointCount', 0, 'The number of the control point through which a subdivision is made orthogonally to the baseline.'),
+	]),
+
+
+	#
+	# mort
+	#
+
+	('mort', [
+		('Version', 'Version', None, None, 'Version of the mort table.'),
+		('uint32', 'MorphChainCount', None, None, 'Number of metamorphosis chains.'),
+		('MortChain', 'MorphChain', 'MorphChainCount', 0, 'Array of metamorphosis chains.'),
+	]),
+
+	('MortChain', [
+		('Flags32', 'DefaultFlags', None, None, 'The default specification for subtables.'),
+		('uint32', 'StructLength', None, None, 'Total byte count, including this header; must be a multiple of 4.'),
+		('uint16', 'MorphFeatureCount', None, None, 'Number of metamorphosis feature entries.'),
+		('uint16', 'MorphSubtableCount', None, None, 'The number of subtables in the chain.'),
+		('struct', 'MorphFeature', 'MorphFeatureCount', 0, 'Array of metamorphosis features.'),
+		('MortSubtable', 'MorphSubtable', 'MorphSubtableCount', 0, 'Array of metamorphosis subtables.'),
+	]),
+
+	('MortSubtable', [
+		('uint16', 'StructLength', None, None, 'Total subtable length, including this header.'),
+		('uint8', 'CoverageFlags', None, None, 'Most significant byte of coverage flags.'),
+		('uint8', 'MorphType', None, None, 'Subtable type.'),
+		('Flags32', 'SubFeatureFlags', None, None, 'The 32-bit mask identifying which subtable this is (the subtable being executed if the AND of this value and the processed defaultFlags is nonzero).'),
+		('SubStruct', 'SubStruct', None, None, 'SubTable.'),
+	]),
 
 	#
 	# morx
 	#
 
-	# TODO: use 'struct' when field.type == field.name
-
 	('morx', [
 		('uint16', 'Version', None, None, 'Version of the morx table.'),
 		('uint16', 'Reserved', None, None, 'Reserved (set to zero).'),
-		('uint32', 'ChainCount', None, None, 'Number of MorphChains.'),
-		('MorphChain', 'MorphChain', 'ChainCount', 0, 'Array of MorphChains.'),
+		('uint32', 'MorphChainCount', None, None, 'Number of extended metamorphosis chains.'),
+		('MorxChain', 'MorphChain', 'MorphChainCount', 0, 'Array of extended metamorphosis chains.'),
 	]),
 
-	('MorphChain', [
+	('MorxChain', [
 		('Flags32', 'DefaultFlags', None, None, 'The default specification for subtables.'),
 		('uint32', 'StructLength', None, None, 'Total byte count, including this header; must be a multiple of 4.'),
 		('uint32', 'MorphFeatureCount', None, None, 'Number of feature subtable entries.'),
 		('uint32', 'MorphSubtableCount', None, None, 'The number of subtables in the chain.'),
-		('MorphFeature', 'MorphFeature', 'MorphFeatureCount', 0, 'Array of MorphFeatures.'),
-		('MorphSubtable', 'MorphSubtable', 'MorphSubtableCount', 0, 'Array of MorphSubtables.'),
+		('MorphFeature', 'MorphFeature', 'MorphFeatureCount', 0, 'Array of metamorphosis features.'),
+		('MorxSubtable', 'MorphSubtable', 'MorphSubtableCount', 0, 'Array of extended metamorphosis subtables.'),
 	]),
 
 	('MorphFeature', [
@@ -1268,7 +1412,7 @@ otData = [
 	# Apple TrueType Reference Manual, chapter “The ‘morx’ table”,
 	# section “Metamorphosis Subtables”.
 	# https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6morx.html
-	('MorphSubtable', [
+	('MorxSubtable', [
 		('uint32', 'StructLength', None, None, 'Total subtable length, including this header.'),
 		('uint8', 'CoverageFlags', None, None, 'Most significant byte of coverage flags.'),
 		('uint16', 'Reserved', None, None, 'Unused.'),
@@ -1285,12 +1429,11 @@ otData = [
 	]),
 
 	('RearrangementMorph', [
-		('struct', 'StateHeader', None, None, 'Header.'),
+		('STXHeader(RearrangementMorphAction)', 'StateTable', None, None, 'Finite-state transducer table for indic rearrangement.'),
 	]),
 
 	('ContextualMorph', [
-		('struct', 'StateHeader', None, None, 'Header.'),
-		# TODO: Add missing parts.
+		('STXHeader(ContextualMorphAction)', 'StateTable', None, None, 'Finite-state transducer for contextual glyph substitution.'),
 	]),
 
 	('LigatureMorph', [
@@ -1301,7 +1444,7 @@ otData = [
 	]),
 
 	('NoncontextualMorph', [
-		('AATLookup(GlyphID)', 'mapping', None, None, 'The noncontextual glyph substitution table.'),
+		('AATLookup(GlyphID)', 'Substitution', None, None, 'The noncontextual glyph substitution table.'),
         ]),
 
 	('InsertionMorph', [

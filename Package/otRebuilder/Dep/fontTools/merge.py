@@ -414,13 +414,83 @@ def merge(self, m, tables):
 	return self
 
 
+def mergeLookupLists(lst):
+	# TODO Do smarter merge.
+	return sumLists(lst)
+
+def mergeFeatures(lst):
+	assert lst
+	self = otTables.Feature()
+	self.FeatureParams = None
+	self.LookupListIndex = mergeLookupLists([l.LookupListIndex for l in lst if l.LookupListIndex])
+	self.LookupCount = len(self.LookupListIndex)
+	return self
+
+def mergeFeatureLists(lst):
+	d = {}
+	for l in lst:
+		for f in l:
+			tag = f.FeatureTag
+			if tag not in d:
+				d[tag] = []
+			d[tag].append(f.Feature)
+	ret = []
+	for tag in sorted(d.keys()):
+		rec = otTables.FeatureRecord()
+		rec.FeatureTag = tag
+		rec.Feature = mergeFeatures(d[tag])
+		ret.append(rec)
+	return ret
+
+def mergeLangSyses(lst):
+	assert lst
+
+	# TODO Support merging ReqFeatureIndex
+	assert all(l.ReqFeatureIndex == 0xFFFF for l in lst)
+
+	self = otTables.LangSys()
+	self.LookupOrder = None
+	self.ReqFeatureIndex = 0xFFFF
+	self.FeatureIndex = mergeFeatureLists([l.FeatureIndex for l in lst if l.FeatureIndex])
+	self.FeatureCount = len(self.FeatureIndex)
+	return self
+
+def mergeScripts(lst):
+	assert lst
+
+	if len(lst) == 1:
+		return lst[0]
+	# TODO Support merging LangSysRecords
+	assert all(not s.LangSysRecord for s in lst)
+
+	self = otTables.Script()
+	self.LangSysRecord = []
+	self.LangSysCount = 0
+	self.DefaultLangSys = mergeLangSyses([s.DefaultLangSys for s in lst if s.DefaultLangSys])
+	return self
+
+def mergeScriptRecords(lst):
+	d = {}
+	for l in lst:
+		for s in l:
+			tag = s.ScriptTag
+			if tag not in d:
+				d[tag] = []
+			d[tag].append(s.Script)
+	ret = []
+	for tag in sorted(d.keys()):
+		rec = otTables.ScriptRecord()
+		rec.ScriptTag = tag
+		rec.Script = mergeScripts(d[tag])
+		ret.append(rec)
+	return ret
+
 otTables.ScriptList.mergeMap = {
-	'ScriptCount': sum,
-	# TODO: Merge duplicate entries
-	'ScriptRecord': lambda lst: sorted(sumLists(lst), key=lambda s: s.ScriptTag),
+	'ScriptCount': lambda lst: None, # TODO
+	'ScriptRecord': mergeScriptRecords,
 }
 otTables.BaseScriptList.mergeMap = {
-	'BaseScriptCount': sum,
+	'BaseScriptCount': lambda lst: None, # TODO
 	# TODO: Merge duplicate entries
 	'BaseScriptRecord': lambda lst: sorted(sumLists(lst), key=lambda s: s.BaseScriptTag),
 }
@@ -503,15 +573,13 @@ def merge(self, m, tables):
 	for i,(table,dups) in enumerate(zip(tables, m.duplicateGlyphsPerFont)):
 		if not dups: continue
 		assert (table is not None and table is not NotImplemented), "Have duplicates to resolve for font %d but no GSUB" % (i + 1)
-		lookupMap = {id(v):v for v in table.table.LookupList.Lookup}
-		featureMap = {id(v):v for v in table.table.FeatureList.FeatureRecord}
 		synthFeature = None
 		synthLookup = None
 		for script in table.table.ScriptList.ScriptRecord:
 			if script.ScriptTag == 'DFLT': continue # XXX
 			for langsys in [script.Script.DefaultLangSys] + [l.LangSys for l in script.Script.LangSysRecord]:
 				if langsys is None: continue # XXX Create!
-				feature = [featureMap[v] for v in langsys.FeatureIndex if featureMap[v].FeatureTag == 'locl']
+				feature = [v for v in langsys.FeatureIndex if v.FeatureTag == 'locl']
 				assert len(feature) <= 1
 				if feature:
 					feature = feature[0]
@@ -523,9 +591,8 @@ def merge(self, m, tables):
 						f.FeatureParams = None
 						f.LookupCount = 0
 						f.LookupListIndex = []
-						langsys.FeatureIndex.append(id(synthFeature))
-						featureMap[id(synthFeature)] = synthFeature
-						langsys.FeatureIndex.sort(key=lambda v: featureMap[v].FeatureTag)
+						langsys.FeatureIndex.append(synthFeature)
+						langsys.FeatureIndex.sort(key=lambda v: v.FeatureTag)
 						table.table.FeatureList.FeatureRecord.append(synthFeature)
 						table.table.FeatureList.FeatureCount += 1
 					feature = synthFeature
@@ -541,7 +608,7 @@ def merge(self, m, tables):
 					table.table.LookupList.Lookup.append(synthLookup)
 					table.table.LookupList.LookupCount += 1
 
-				feature.Feature.LookupListIndex[:0] = [id(synthLookup)]
+				feature.Feature.LookupListIndex[:0] = [synthLookup]
 				feature.Feature.LookupCount += 1
 
 	DefaultTable.merge(self, m, tables)
@@ -698,7 +765,7 @@ class Options(object):
 				raise self.UnknownOptionError("Unknown option '%s'" % k)
 			setattr(self, k, v)
 
-	def parse_opts(self, argv, ignore_unknown=False):
+	def parse_opts(self, argv, ignore_unknown=[]):
 		ret = []
 		opts = {}
 		for a in argv:
@@ -758,6 +825,41 @@ class Options(object):
 
 		return ret
 
+class _AttendanceRecordingIdentityDict(dict):
+	"""A dictionary-like object that records indices of items actually accessed
+	from a list."""
+
+	def __init__(self, lst):
+		self.l = lst
+		self.d = {id(v):i for i,v in enumerate(lst)}
+		self.s = set()
+
+	def __getitem__(self, v):
+		self.s.add(self.d[id(v)])
+		return v
+
+class _GregariousDict(dict):
+	"""A dictionary-like object that welcomes guests without reservations and
+	adds them to the end of the guest list."""
+
+	def __init__(self, lst):
+		self.l = lst
+		self.s = set(id(v) for v in lst)
+
+	def __getitem__(self, v):
+		if id(v) not in self.s:
+			self.s.add(id(v))
+			self.l.append(v)
+		return v
+
+class _NonhashableDict(dict):
+	"""A dictionary-like object mapping objects to their index within a list."""
+
+	def __init__(self, lst):
+		self.d = {id(v):i for i,v in enumerate(lst)}
+
+	def __getitem__(self, v):
+		return self.d[id(v)]
 
 class Merger(object):
 
@@ -871,14 +973,12 @@ class Merger(object):
 			if not t: continue
 
 			if t.table.LookupList:
-				lookupMap = {i:id(v) for i,v in enumerate(t.table.LookupList.Lookup)}
+				lookupMap = {i:v for i,v in enumerate(t.table.LookupList.Lookup)}
 				t.table.LookupList.mapLookups(lookupMap)
-				if t.table.FeatureList:
-					# XXX Handle present FeatureList but absent LookupList
-					t.table.FeatureList.mapLookups(lookupMap)
+				t.table.FeatureList.mapLookups(lookupMap)
 
 			if t.table.FeatureList and t.table.ScriptList:
-				featureMap = {i:id(v) for i,v in enumerate(t.table.FeatureList.FeatureRecord)}
+				featureMap = {i:v for i,v in enumerate(t.table.FeatureList.FeatureRecord)}
 				t.table.ScriptList.mapFeatures(featureMap)
 
 		# TODO GDEF/Lookup MarkFilteringSets
@@ -895,17 +995,48 @@ class Merger(object):
 		for t in [GSUB, GPOS]:
 			if not t: continue
 
-			if t.table.LookupList:
-				lookupMap = {id(v):i for i,v in enumerate(t.table.LookupList.Lookup)}
-				t.table.LookupList.mapLookups(lookupMap)
-				if t.table.FeatureList:
-					# XXX Handle present FeatureList but absent LookupList
-					t.table.FeatureList.mapLookups(lookupMap)
-
 			if t.table.FeatureList and t.table.ScriptList:
-				# XXX Handle present ScriptList but absent FeatureList
-				featureMap = {id(v):i for i,v in enumerate(t.table.FeatureList.FeatureRecord)}
+
+				# Collect unregistered (new) features.
+				featureMap = _GregariousDict(t.table.FeatureList.FeatureRecord)
 				t.table.ScriptList.mapFeatures(featureMap)
+
+				# Record used features.
+				featureMap = _AttendanceRecordingIdentityDict(t.table.FeatureList.FeatureRecord)
+				t.table.ScriptList.mapFeatures(featureMap)
+				usedIndices = featureMap.s
+
+				# Remove unused features
+				t.table.FeatureList.FeatureRecord = [f for i,f in enumerate(t.table.FeatureList.FeatureRecord) if i in usedIndices]
+
+				# Map back to indices.
+				featureMap = _NonhashableDict(t.table.FeatureList.FeatureRecord)
+				t.table.ScriptList.mapFeatures(featureMap)
+
+				t.table.FeatureList.FeatureCount = len(t.table.FeatureList.FeatureRecord)
+
+			if t.table.LookupList:
+
+				# Collect unregistered (new) lookups.
+				lookupMap = _GregariousDict(t.table.LookupList.Lookup)
+				t.table.FeatureList.mapLookups(lookupMap)
+				t.table.LookupList.mapLookups(lookupMap)
+
+				# Record used lookups.
+				lookupMap = _AttendanceRecordingIdentityDict(t.table.LookupList.Lookup)
+				t.table.FeatureList.mapLookups(lookupMap)
+				t.table.LookupList.mapLookups(lookupMap)
+				usedIndices = lookupMap.s
+
+				# Remove unused lookups
+				t.table.LookupList.Lookup = [l for i,l in enumerate(t.table.LookupList.Lookup) if i in usedIndices]
+
+				# Map back to indices.
+				lookupMap = _NonhashableDict(t.table.LookupList.Lookup)
+				t.table.FeatureList.mapLookups(lookupMap)
+				t.table.LookupList.mapLookups(lookupMap)
+
+				t.table.LookupList.LookupCount = len(t.table.LookupList.Lookup)
 
 		# TODO GDEF/Lookup MarkFilteringSets
 		# TODO FeatureParams nameIDs

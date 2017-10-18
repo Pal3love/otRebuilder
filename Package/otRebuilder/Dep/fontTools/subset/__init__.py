@@ -13,6 +13,7 @@ import sys
 import struct
 import array
 import logging
+from collections import Counter
 from types import MethodType
 
 __usage__ = "pyftsubset font-file [glyph...] [--option=value]..."
@@ -1674,6 +1675,48 @@ def subset_glyphs(self, s):
     self.hdmx = {sz:_dict_subset(l, s.glyphs) for sz,l in self.hdmx.items()}
     return bool(self.hdmx)
 
+@_add_method(ttLib.getTableClass('ankr'))
+def subset_glyphs(self, s):
+    table = self.table.AnchorPoints
+    assert table.Format == 0, "unknown 'ankr' format %s" % table.Format
+    table.Anchors = {glyph: table.Anchors[glyph] for glyph in s.glyphs
+                     if glyph in table.Anchors}
+    return len(table.Anchors) > 0
+
+@_add_method(ttLib.getTableClass('bsln'))
+def closure_glyphs(self, s):
+    table = self.table.Baseline
+    if table.Format in (2, 3):
+        s.glyphs.add(table.StandardGlyph)
+
+@_add_method(ttLib.getTableClass('bsln'))
+def subset_glyphs(self, s):
+    table = self.table.Baseline
+    if table.Format in (1, 3):
+        baselines = {glyph: table.BaselineValues.get(glyph, table.DefaultBaseline)
+                     for glyph in s.glyphs}
+        if len(baselines) > 0:
+            mostCommon, _cnt = Counter(baselines.values()).most_common(1)[0]
+            table.DefaultBaseline = mostCommon
+            baselines = {glyph: b for glyph, b in baselines.items()
+                         if b != mostCommon}
+        if len(baselines) > 0:
+            table.BaselineValues = baselines
+        else:
+            table.Format = {1: 0, 3: 2}[table.Format]
+            del table.BaselineValues
+    return True
+
+@_add_method(ttLib.getTableClass('lcar'))
+def subset_glyphs(self, s):
+    table = self.table.LigatureCarets
+    if table.Format in (0, 1):
+        table.Carets = {glyph: table.Carets[glyph] for glyph in s.glyphs
+                        if glyph in table.Carets}
+        return len(table.Carets) > 0
+    else:
+        assert False, "unknown 'lcar' format %s" % table.Format
+
 @_add_method(ttLib.getTableClass('gvar'))
 def prune_pre_subset(self, font, options):
     if options.notdef_glyph and not options.notdef_outline:
@@ -1693,6 +1736,22 @@ def subset_glyphs(self, s):
     self.numVertOriginYMetrics = len(self.VOriginRecords)
     return True    # Never drop; has default metrics
 
+@_add_method(ttLib.getTableClass('opbd'))
+def subset_glyphs(self, s):
+    table = self.table.OpticalBounds
+    if table.Format == 0:
+        table.OpticalBoundsDeltas = {glyph: table.OpticalBoundsDeltas[glyph]
+                                     for glyph in s.glyphs
+                                     if glyph in table.OpticalBoundsDeltas}
+        return len(table.OpticalBoundsDeltas) > 0
+    elif table.Format == 1:
+        table.OpticalBoundsPoints = {glyph: table.OpticalBoundsPoints[glyph]
+                                     for glyph in s.glyphs
+                                     if glyph in table.OpticalBoundsPoints}
+        return len(table.OpticalBoundsPoints) > 0
+    else:
+        assert False, "unknown 'opbd' format %s" % table.Format
+
 @_add_method(ttLib.getTableClass('post'))
 def prune_pre_subset(self, font, options):
     if not options.glyph_names:
@@ -1704,22 +1763,37 @@ def subset_glyphs(self, s):
     self.extraNames = []    # This seems to do it
     return True # Required table
 
+@_add_method(ttLib.getTableClass('prop'))
+def subset_glyphs(self, s):
+    prop = self.table.GlyphProperties
+    if prop.Format == 0:
+        return prop.DefaultProperties != 0
+    elif prop.Format == 1:
+        prop.Properties = {g: prop.Properties.get(g, prop.DefaultProperties)
+                           for g in s.glyphs}
+        mostCommon, _cnt = Counter(prop.Properties.values()).most_common(1)[0]
+        prop.DefaultProperties = mostCommon
+        prop.Properties = {g: prop for g, prop in prop.Properties.items()
+                           if prop != mostCommon}
+        if len(prop.Properties) == 0:
+            del prop.Properties
+            prop.Format = 0
+            return prop.DefaultProperties != 0
+        return True
+    else:
+        assert False, "unknown 'prop' format %s" % prop.Format
+
 @_add_method(ttLib.getTableClass('COLR'))
 def closure_glyphs(self, s):
     decompose = s.glyphs
-    while True:
+    while decompose:
         layers = set()
         for g in decompose:
-            if g not in self.ColorLayers:
-                continue
-            for l in self.ColorLayers[g]:
-                if l.name not in s.glyphs:
-                    layers.add(l.name)
-        layers = set(l for l in layers if l not in s.glyphs)
-        if not layers:
-            break
-        decompose = layers
+            for l in self.ColorLayers.get(g, []):
+                layers.add(l.name)
+        layers -= s.glyphs
         s.glyphs.update(layers)
+        decompose = layers
 
 @_add_method(ttLib.getTableClass('COLR'))
 def subset_glyphs(self, s):
@@ -1845,20 +1919,17 @@ def remapComponentsFast(self, indices):
 @_add_method(ttLib.getTableClass('glyf'))
 def closure_glyphs(self, s):
     decompose = s.glyphs
-    while True:
+    while decompose:
         components = set()
         for g in decompose:
             if g not in self.glyphs:
                 continue
             gl = self.glyphs[g]
             for c in gl.getComponentNames(self):
-                if c not in s.glyphs:
-                    components.add(c)
-        components = set(c for c in components if c not in s.glyphs)
-        if not components:
-            break
-        decompose = components
+                components.add(c)
+        components -= s.glyphs
         s.glyphs.update(components)
+        decompose = components
 
 @_add_method(ttLib.getTableClass('glyf'))
 def prune_pre_subset(self, font, options):
@@ -2552,7 +2623,7 @@ class Options(object):
                 raise self.UnknownOptionError("Unknown option '%s'" % k)
             setattr(self, k, v)
 
-    def parse_opts(self, argv, ignore_unknown=False):
+    def parse_opts(self, argv, ignore_unknown=[]):
         posargs = []
         passthru_options = []
         for a in argv:
@@ -2750,17 +2821,17 @@ class Subsetter(object):
                 log.glyphs(self.glyphs, font=font)
         self.glyphs_mathed = frozenset(self.glyphs)
 
-        if 'COLR' in font:
-            with timer("close glyph list over 'COLR'"):
-                log.info("Closing glyph list over 'COLR': %d glyphs before",
-                         len(self.glyphs))
-                log.glyphs(self.glyphs, font=font)
-                font['COLR'].closure_glyphs(self)
-                self.glyphs.intersection_update(realGlyphs)
-                log.info("Closed glyph list over 'COLR': %d glyphs after",
-                         len(self.glyphs))
-                log.glyphs(self.glyphs, font=font)
-        self.glyphs_colred = frozenset(self.glyphs)
+        for table in ('COLR', 'bsln'):
+            if table in font:
+                with timer("close glyph list over '%s'" % table):
+                    log.info("Closing glyph list over '%s': %d glyphs before",
+                             table, len(self.glyphs))
+                    log.glyphs(self.glyphs, font=font)
+                    font[table].closure_glyphs(self)
+                    self.glyphs.intersection_update(realGlyphs)
+                    log.info("Closed glyph list over '%s': %d glyphs after",
+                             table, len(self.glyphs))
+                    log.glyphs(self.glyphs, font=font)
 
         if 'glyf' in font:
             with timer("close glyph list over 'glyf'"):
