@@ -134,16 +134,19 @@ class TupleVariation(object):
 			flags |= INTERMEDIATE_REGION
 			tupleData.append(intermediateCoord)
 
-		if sharedPoints is not None:
+		points = self.getUsedPoints()
+		if sharedPoints == points:
+			# Only use the shared points if they are identical to the actually used points
 			auxData = self.compileDeltas(sharedPoints)
+			usesSharedPoints = True
 		else:
 			flags |= PRIVATE_POINT_NUMBERS
-			points = self.getUsedPoints()
 			numPointsInGlyph = len(self.coordinates)
 			auxData = self.compilePoints(points, numPointsInGlyph) + self.compileDeltas(points)
+			usesSharedPoints = False
 
 		tupleData = struct.pack('>HH', len(auxData), flags) + bytesjoin(tupleData)
-		return (tupleData, auxData)
+		return (tupleData, auxData, usesSharedPoints)
 
 	def compileCoord(self, axisTags):
 		result = []
@@ -505,26 +508,20 @@ def compileTupleVariationStore(variations, pointCount,
 	data = []
 	someTuplesSharePoints = False
 	for v in variations:
-		privateTuple, privateData = v.compile(
+		privateTuple, privateData, usesSharedPoints = v.compile(
 			axisTags, sharedTupleIndices, sharedPoints=None)
-		sharedTuple, sharedData = v.compile(
+		sharedTuple, sharedData, usesSharedPoints = v.compile(
 			axisTags, sharedTupleIndices, sharedPoints=allPoints)
-		# TODO: Apple macOS 10.9.5 (maybe also earlier) up to 10.12 had a bug
-		# that broke variations if the `gvar` table contains shared tuples.
-		# Apple will likely fix this in macOS 10.13. But for the time being,
-		# we never emit shared points although the result would be more compact.
-		# https://rawgit.com/unicode-org/text-rendering-tests/master/reports/CoreText.html#GVAR-1
-		#if (len(sharedTuple) + len(sharedData)) < (len(privateTuple) + len(privateData)):
-		if False:
+		if (len(sharedTuple) + len(sharedData)) < (len(privateTuple) + len(privateData)):
 			tuples.append(sharedTuple)
 			data.append(sharedData)
-			someTuplesSharePoints = True
+			someTuplesSharePoints |= usesSharedPoints
 		else:
 			tuples.append(privateTuple)
 			data.append(privateData)
 	if someTuplesSharePoints:
 		data = bytechr(0) + bytesjoin(data)  # 0x00 = "all points in glyph"
-		tupleVariationCount = tv.TUPLES_SHARE_POINT_NUMBERS | len(tuples)
+		tupleVariationCount = TUPLES_SHARE_POINT_NUMBERS | len(tuples)
 	else:
 		data = bytesjoin(data)
 		tupleVariationCount = len(tuples)

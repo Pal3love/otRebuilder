@@ -385,9 +385,8 @@ def merge(self, m, tables):
 				if m.duplicateGlyphsPerFont[fontIdx].get(oldgid, gid) == gid:
 					m.duplicateGlyphsPerFont[fontIdx][oldgid] = gid
 				else:
-					# char previously mapped to oldgid but already remapped to a different gid,
-					# save new gid as an alternate
-					# TODO: try harder to save these
+					# Char previously mapped to oldgid but already remapped to a different gid.
+					# TODO: Try harder to do something about these.
 					log.warning("Dropped mapping from codepoint %#06X to glyphId '%s'", uni, gid)
 
 	cmapBmpOnly = {uni: gid for uni,gid in cmap.items() if uni <= 0xFFFF}
@@ -572,7 +571,7 @@ def merge(self, m, tables):
 	assert len(tables) == len(m.duplicateGlyphsPerFont)
 	for i,(table,dups) in enumerate(zip(tables, m.duplicateGlyphsPerFont)):
 		if not dups: continue
-		assert (table is not None and table is not NotImplemented), "Have duplicates to resolve for font %d but no GSUB" % (i + 1)
+		assert (table is not None and table is not NotImplemented), "Have duplicates to resolve for font %d but no GSUB: %s" % (i + 1, dups)
 		synthFeature = None
 		synthLookup = None
 		for script in table.table.ScriptList.ScriptRecord:
@@ -827,7 +826,7 @@ class Options(object):
 
 class _AttendanceRecordingIdentityDict(dict):
 	"""A dictionary-like object that records indices of items actually accessed
-	from a list."""
+		from a list."""
 
 	def __init__(self, lst):
 		self.l = lst

@@ -7,7 +7,8 @@ from fontTools.misc import classifyTools
 from fontTools.ttLib.tables import otTables as ot
 from fontTools.ttLib.tables import otBase as otBase
 from fontTools.ttLib.tables.DefaultTable import DefaultTable
-from fontTools.varLib import builder
+from fontTools.varLib import builder, varStore
+from fontTools.varLib.varStore import VarStoreInstancer
 from functools import reduce
 
 
@@ -196,7 +197,7 @@ def _Lookup_PairPos_get_effective_value_pair(subtables, firstGlyph, secondGlyph)
 @AligningMerger.merger(ot.SinglePos)
 def merge(merger, self, lst):
 	self.ValueFormat = valueFormat = reduce(int.__or__, [l.ValueFormat for l in lst], 0)
-	assert valueFormat & ~0xF == 0, valueFormat
+	assert len(lst) == 1 or (valueFormat & ~0xF == 0), valueFormat
 
 	# If all have same coverage table and all are format 1,
 	if all(v.Format == 1 for v in lst) and all(self.Coverage.glyphs == v.Coverage.glyphs for v in lst):
@@ -637,10 +638,14 @@ def merge(merger, self, lst):
 
 	del merger.lookup_subtables
 
+
 #
 # InstancerMerger
 #
+
 class InstancerMerger(AligningMerger):
+	"""A merger that takes multiple master fonts, and instantiates
+	an instance."""
 
 	def __init__(self, font, model, location):
 		Merger.__init__(self, font)
@@ -676,15 +681,110 @@ def merge(merger, self, lst):
 
 
 #
+# MutatorMerger
+#
+
+class MutatorMerger(AligningMerger):
+	"""A merger that takes a variable font, and instantiates
+	an instance."""
+
+	def __init__(self, font, location):
+		Merger.__init__(self, font)
+		self.location = location
+
+		store = None
+		if 'GDEF' in font:
+			gdef = font['GDEF'].table
+			if gdef.Version >= 0x00010003:
+				store = gdef.VarStore
+
+		self.instancer = VarStoreInstancer(store, font['fvar'].axes, location)
+
+	def instantiate(self):
+		font = self.font
+
+		self.mergeTables(font, [font], ['GPOS'])
+
+		if 'GDEF' in font:
+			gdef = font['GDEF'].table
+			if gdef.Version >= 0x00010003:
+				del gdef.VarStore
+				gdef.Version = 0x00010002
+				if gdef.MarkGlyphSetsDef is None:
+					del gdef.MarkGlyphSetsDef
+					gdef.Version = 0x00010000
+			if not (gdef.LigCaretList or
+				gdef.MarkAttachClassDef or
+				gdef.GlyphClassDef or
+				gdef.AttachList or
+				(gdef.Version >= 0x00010002 and gdef.MarkGlyphSetsDef)):
+				del font['GDEF']
+
+@MutatorMerger.merger(ot.Anchor)
+def merge(merger, self, lst):
+	if self.Format != 3:
+		return
+
+	instancer = merger.instancer
+	for v in "XY":
+		tableName = v+'DeviceTable'
+		if not hasattr(self, tableName):
+			continue
+		dev = getattr(self, tableName)
+		delattr(self, tableName)
+		if dev is None:
+			continue
+
+		assert dev.DeltaFormat == 0x8000
+		varidx = (dev.StartSize << 16) + dev.EndSize
+		delta = round(instancer[varidx])
+
+		attr = v+'Coordinate'
+		setattr(self, attr, getattr(self, attr) + delta)
+
+	self.Format = 1
+
+@MutatorMerger.merger(otBase.ValueRecord)
+def merge(merger, self, lst):
+
+	# All other structs are merged with self pointing to a copy of base font,
+	# except for ValueRecords which are sometimes created later and initialized
+	# to have 0/None members.  Hence the copy.
+	self.__dict__ = lst[0].__dict__.copy()
+
+	instancer = merger.instancer
+	# TODO Handle differing valueformats
+	for name, tableName in [('XAdvance','XAdvDevice'),
+				('YAdvance','YAdvDevice'),
+				('XPlacement','XPlaDevice'),
+				('YPlacement','YPlaDevice')]:
+
+		if not hasattr(self, tableName):
+			continue
+		dev = getattr(self, tableName)
+		delattr(self, tableName)
+		if dev is None:
+			continue
+
+		assert dev.DeltaFormat == 0x8000
+		varidx = (dev.StartSize << 16) + dev.EndSize
+		delta = round(instancer[varidx])
+
+		setattr(self, name, getattr(self, name) + delta)
+
+
+#
 # VariationMerger
 #
 
 class VariationMerger(AligningMerger):
+	"""A merger that takes multiple master fonts, and builds a
+	variable font."""
 
 	def __init__(self, model, axisTags, font):
 		Merger.__init__(self, font)
 		self.model = model
-		self.store_builder = builder.OnlineVarStoreBuilder(axisTags)
+		self.store_builder = varStore.OnlineVarStoreBuilder(axisTags)
 		self.store_builder.setModel(model)
 
 def _all_equal(lst):

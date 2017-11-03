@@ -10,6 +10,7 @@ log = logging.getLogger(__name__)
 __all__ = [
 	"fixedToFloat",
 	"floatToFixed",
+    "floatToFixedToFloat",
 	"ensureVersionIsLong",
 	"versionToFixed",
 ]
@@ -47,10 +48,19 @@ def fixedToFloat(value, precisionBits):
 
 def floatToFixed(value, precisionBits):
 	"""Converts a float to a fixed-point number given the number of
-	precisionBits.  Ie. int(round(value * (1<<precisionBits))).
+	precisionBits.  Ie. round(value * (1<<precisionBits)).
 	"""
-	return int(round(value * (1<<precisionBits)))
+	return round(value * (1<<precisionBits))
 
+def floatToFixedToFloat(value, precisionBits):
+	"""Converts a float to a fixed-point number given the number of
+	precisionBits, round it, then convert it back to float again.
+	Ie. round(value * (1<<precisionBits)) / (1<<precisionBits)
+	Note: this is *not* equivalent to fixedToFloat(floatToFixed(value)),
+	which would return the shortest representation of the rounded value.
+	"""
+	scale = 1<<precisionBits
+	return round(value * scale) / scale
 
 def ensureVersionIsLong(value):
 	"""Ensure a table version is an unsigned long (unsigned short major,

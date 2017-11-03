@@ -5,18 +5,20 @@ $ python mutator.py ./NotoSansArabic-VF.ttf wght=140 wdth=85
 """
 from __future__ import print_function, division, absolute_import
 from fontTools.misc.py23 import *
+from fontTools.misc.fixedTools import floatToFixedToFloat
 from fontTools.ttLib import TTFont
 from fontTools.ttLib.tables._g_l_y_f import GlyphCoordinates
-from fontTools.varLib import _GetCoordinates, _SetCoordinates
+from fontTools.varLib import _GetCoordinates, _SetCoordinates, _DesignspaceAxis
 from fontTools.varLib.models import supportScalar, normalizeLocation
+from fontTools.varLib.merger import MutatorMerger
+from fontTools.varLib.varStore import VarStoreInstancer
+from fontTools.varLib.mvar import MVAR_ENTRIES
 from fontTools.varLib.iup import iup_delta
 import os.path
 import logging
 
 
 log = logging.getLogger("fontTools.varlib.mutator")
-
-
 
 
 def instantiateVariableFont(varfont, location, inplace=False):
@@ -38,12 +40,16 @@ def instantiateVariableFont(varfont, location, inplace=False):
 
 	fvar = varfont['fvar']
 	axes = {a.axisTag:(a.minValue,a.defaultValue,a.maxValue) for a in fvar.axes}
-	# TODO Apply avar
-	# TODO Round to F2Dot14?
 	loc = normalizeLocation(location, axes)
+	if 'avar' in varfont:
+		maps = varfont['avar'].segments
+		loc = {k:_DesignspaceAxis._map(v, maps[k]) for k,v in loc.items()}
+	# Quantize to F2Dot14, to avoid surprise interpolations.
+	loc = {k:floatToFixedToFloat(v, 14) for k,v in loc.items()}
 	# Location is normalized now
 	log.info("Normalized location: %s", loc)
 
+	log.info("Mutating glyf/gvar tables")
 	gvar = varfont['gvar']
 	glyf = varfont['glyf']
 	# get list of glyph names in gvar sorted by component depth
@@ -58,7 +64,7 @@ def instantiateVariableFont(varfont, location, inplace=False):
 		coordinates,_ = _GetCoordinates(varfont, glyphname)
 		origCoords, endPts = None, None
 		for var in variations:
-			scalar = supportScalar(loc, var.axes, ot=True)
+			scalar = supportScalar(loc, var.axes)
 			if not scalar: continue
 			delta = var.coordinates
 			if None in delta:
@@ -69,9 +75,8 @@ def instantiateVariableFont(varfont, location, inplace=False):
 			coordinates += GlyphCoordinates(delta) * scalar
 		_SetCoordinates(varfont, glyphname, coordinates)
 
-	# Interpolate cvt
-
 	if 'cvar' in varfont:
+		log.info("Mutating cvt/cvar tables")
 		cvar = varfont['cvar']
 		cvt = varfont['cvt ']
 		deltas = {}
@@ -82,7 +87,30 @@ def instantiateVariableFont(varfont, location, inplace=False):
 				if c is not None:
 					deltas[i] = deltas.get(i, 0) + scalar * c
 		for i, delta in deltas.items():
-			cvt[i] += int(round(delta))
+			cvt[i] += round(delta)
+
+	if 'MVAR' in varfont:
+		log.info("Mutating MVAR table")
+		mvar = varfont['MVAR'].table
+		varStoreInstancer = VarStoreInstancer(mvar.VarStore, fvar.axes, loc)
+		records = mvar.ValueRecord
+		for rec in records:
+			mvarTag = rec.ValueTag
+			if mvarTag not in MVAR_ENTRIES:
+				continue
+			tableTag, itemName = MVAR_ENTRIES[mvarTag]
+			delta = round(varStoreInstancer[rec.VarIdx])
+			if not delta:
+				continue
+			setattr(varfont[tableTag], itemName,
+				getattr(varfont[tableTag], itemName) + delta)
+
+	if 'GDEF' in varfont:
+		log.info("Mutating GDEF/GPOS/GSUB tables")
+		merger = MutatorMerger(varfont, loc)
+
+		log.info("Building interpolated tables")
+		merger.instantiate()
 
 	log.info("Removing variable tables")
 	for tag in ('avar','cvar','fvar','gvar','HVAR','MVAR','VVAR','STAT'):

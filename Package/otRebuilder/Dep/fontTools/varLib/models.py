@@ -68,7 +68,7 @@ def normalizeLocation(location, axes):
 		out[tag] = normalizeValue(v, triple)
 	return out
 
-def supportScalar(location, support, ot=False):
+def supportScalar(location, support, ot=True):
 	"""Returns the scalar multiplier at location, for a master
 	with support.  If ot is True, then a peak value of zero
 	for support of an axis means "axis does not participate".  That
@@ -83,11 +83,11 @@ def supportScalar(location, support, ot=False):
 	0.75
 	>>> supportScalar({'wght':2.5, 'wdth':0}, {'wght':(0,2,4), 'wdth':(-1,0,+1)})
 	0.75
-	>>> supportScalar({'wght':2.5, 'wdth':.5}, {'wght':(0,2,4), 'wdth':(-1,0,+1)})
+	>>> supportScalar({'wght':2.5, 'wdth':.5}, {'wght':(0,2,4), 'wdth':(-1,0,+1)}, ot=False)
 	0.375
-	>>> supportScalar({'wght':2.5, 'wdth':0}, {'wght':(0,2,4), 'wdth':(-1,0,+1)}, ot=True)
+	>>> supportScalar({'wght':2.5, 'wdth':0}, {'wght':(0,2,4), 'wdth':(-1,0,+1)})
 	0.75
-	>>> supportScalar({'wght':2.5, 'wdth':.5}, {'wght':(0,2,4), 'wdth':(-1,0,+1)}, ot=True)
+	>>> supportScalar({'wght':2.5, 'wdth':.5}, {'wght':(0,2,4), 'wdth':(-1,0,+1)})
 	0.75
 	"""
 	scalar = 1.
@@ -263,7 +263,7 @@ class VariationModel(object):
 			deltaWeight = {}
 			# Walk over previous masters now, populate deltaWeight
 			for j,m in enumerate(locations[:i]):
-				scalar = supportScalar(loc, supports[j], ot=True)
+				scalar = supportScalar(loc, supports[j])
 				if scalar:
 					deltaWeight[j] = scalar
 			deltaWeights.append(deltaWeight)

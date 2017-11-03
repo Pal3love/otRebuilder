@@ -1437,10 +1437,7 @@ otData = [
 	]),
 
 	('LigatureMorph', [
-		('struct', 'StateHeader', None, None, 'Header.'),
-		('uint32', 'LigActionOffset', None, None, 'Byte offset from stateHeader to the start of the ligature action table.'),
-		('uint32', 'ComponentOffset', None, None, 'Byte offset from stateHeader to the start of the component table.'),
-		('uint32', 'LigatureOffset', None, None, 'Byte offset from stateHeader to the start of the actual ligature lists.'),
+		('STXHeader(LigatureMorphAction)', 'StateTable', None, None, 'Finite-state transducer for ligature substitution.'),
 	]),
 
 	('NoncontextualMorph', [
@@ -1459,7 +1456,7 @@ otData = [
 	]),
 
 	# If the 'morx' table version is 3 or greater, then the last subtable in the chain is followed by a subtableGlyphCoverageArray, as described below.
-	#		('Offset', 'MarkGlyphSetsDef', None, 'int(round(Version*0x10000)) >= 0x00010002', 'Offset to the table of mark set definitions-from beginning of GDEF header (may be NULL)'),
+	#		('Offset', 'MarkGlyphSetsDef', None, 'round(Version*0x10000) >= 0x00010002', 'Offset to the table of mark set definitions-from beginning of GDEF header (may be NULL)'),
 
 
 	#

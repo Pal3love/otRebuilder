@@ -11,6 +11,7 @@ from fontTools.misc.textTools import safeEval
 from .otBase import BaseTable, FormatSwitchingBaseTable
 import operator
 import logging
+import struct
 
 
 log = logging.getLogger(__name__)
@@ -78,7 +79,8 @@ class RearrangementMorphAction(AATAction):
 		self.MarkLast = False
 		self.ReservedFlags = 0
 
-	def compile(self, writer, font):
+	def compile(self, writer, font, ligActionIndex):
+		assert ligActionIndex is None
 		writer.writeUShort(self.NewState)
 		assert self.Verb >= 0 and self.Verb <= 15, self.Verb
 		flags = self.Verb | self.ReservedFlags
@@ -87,7 +89,8 @@ class RearrangementMorphAction(AATAction):
 		if self.MarkLast: flags |= 0x2000
 		writer.writeUShort(flags)
 
-	def decompile(self, reader, font):
+	def decompile(self, reader, font, ligActionReader):
+		assert ligActionReader is None
 		self.NewState = reader.readUShort()
 		flags = reader.readUShort()
 		self.Verb = flags & 0xF
@@ -136,7 +139,8 @@ class ContextualMorphAction(AATAction):
 		self.ReservedFlags = 0
 		self.MarkIndex, self.CurrentIndex = 0xFFFF, 0xFFFF
 
-	def compile(self, writer, font):
+	def compile(self, writer, font, ligActionIndex):
+		assert ligActionIndex is None
 		writer.writeUShort(self.NewState)
 		flags = self.ReservedFlags
 		if self.SetMark: flags |= 0x8000
@@ -145,7 +149,8 @@ class ContextualMorphAction(AATAction):
 		writer.writeUShort(self.MarkIndex)
 		writer.writeUShort(self.CurrentIndex)
 
-	def decompile(self, reader, font):
+	def decompile(self, reader, font, ligActionReader):
+		assert ligActionReader is None
 		self.NewState = reader.readUShort()
 		flags = reader.readUShort()
 		self.SetMark = bool(flags & 0x8000)
@@ -185,6 +190,132 @@ class ContextualMorphAction(AATAction):
 				self.MarkIndex = safeEval(eltAttrs["value"])
 			elif eltName == "CurrentIndex":
 				self.CurrentIndex = safeEval(eltAttrs["value"])
+
+
+class LigAction(object):
+	def __init__(self):
+		self.Store = False
+		# GlyphIndexDelta is a (possibly negative) delta that gets
+		# added to the glyph ID at the top of the AAT runtime
+		# execution stack. It is *not* a byte offset into the
+		# morx table. The result of the addition, which is performed
+		# at run time by the shaping engine, is an index into
+		# the ligature components table. See 'morx' specification.
+		# In the AAT specification, this field is called Offset;
+		# but its meaning is quite different from other offsets
+		# in either AAT or OpenType, so we use a different name.
+		self.GlyphIndexDelta = 0
+
+
+class LigatureMorphAction(AATAction):
+	staticSize = 6
+	_FLAGS = ["SetComponent", "DontAdvance"]
+
+	def __init__(self):
+		self.NewState = 0
+		self.SetComponent, self.DontAdvance = False, False
+		self.ReservedFlags = 0
+		self.Actions = []
+
+	def compile(self, writer, font, ligActionIndex):
+		assert ligActionIndex is not None
+		writer.writeUShort(self.NewState)
+		flags = self.ReservedFlags
+		if self.SetComponent: flags |= 0x8000
+		if self.DontAdvance: flags |= 0x4000
+		if len(self.Actions) > 0: flags |= 0x2000
+		writer.writeUShort(flags)
+		if len(self.Actions) > 0:
+			actions = self.compileLigActions()
+			writer.writeUShort(ligActionIndex[actions])
+		else:
+			writer.writeUShort(0)
+
+	def decompile(self, reader, font, ligActionReader):
+		assert ligActionReader is not None
+		self.NewState = reader.readUShort()
+		flags = reader.readUShort()
+		self.SetComponent = bool(flags & 0x8000)
+		self.DontAdvance = bool(flags & 0x4000)
+		performAction = bool(flags & 0x2000)
+		# As of 2017-09-12, the 'morx' specification says that
+		# the reserved bitmask in ligature subtables is 0x3FFF.
+		# However, the specification also defines a flag 0x2000,
+		# so the reserved value should actually be 0x1FFF.
+		# TODO: Report this specification bug to Apple.
+		self.ReservedFlags = flags & 0x1FFF
+		ligActionIndex = reader.readUShort()
+		if performAction:
+			self.Actions = self._decompileLigActions(
+				ligActionReader, ligActionIndex)
+		else:
+			self.Actions = []
+
+	def compileLigActions(self):
+		result = []
+		for i, action in enumerate(self.Actions):
+			last = (i == len(self.Actions) - 1)
+			value = action.GlyphIndexDelta & 0x3FFFFFFF
+			value |= 0x80000000 if last else 0
+			value |= 0x40000000 if action.Store else 0
+			result.append(struct.pack(">L", value))
+		return bytesjoin(result)
+
+	def _decompileLigActions(self, ligActionReader, ligActionIndex):
+		actions = []
+		last = False
+		reader = ligActionReader.getSubReader(
+			ligActionReader.pos + ligActionIndex * 4)
+		while not last:
+			value = reader.readULong()
+			last = bool(value & 0x80000000)
+			action = LigAction()
+			actions.append(action)
+			action.Store = bool(value & 0x40000000)
+			delta = value & 0x3FFFFFFF
+			if delta >= 0x20000000: # sign-extend 30-bit value
+				delta = -0x40000000 + delta
+			action.GlyphIndexDelta = delta
+		return actions
+
+	def fromXML(self, name, attrs, content, font):
+		self.NewState = self.ReservedFlags = 0
+		self.SetComponent = self.DontAdvance = False
+		self.ReservedFlags = 0
+		self.Actions = []
+		content = [t for t in content if isinstance(t, tuple)]
+		for eltName, eltAttrs, eltContent in content:
+			if eltName == "NewState":
+				self.NewState = safeEval(eltAttrs["value"])
+			elif eltName == "Flags":
+				for flag in eltAttrs["value"].split(","):
+					self._setFlag(flag.strip())
+			elif eltName == "ReservedFlags":
+				self.ReservedFlags = safeEval(eltAttrs["value"])
+			elif eltName == "Action":
+				action = LigAction()
+				flags = eltAttrs.get("Flags", "").split(",")
+				flags = [f.strip() for f in flags]
+				action.Store = "Store" in flags
+				action.GlyphIndexDelta = safeEval(
+					eltAttrs["GlyphIndexDelta"])
+				self.Actions.append(action)
+
+	def toXML(self, xmlWriter, font, attrs, name):
+		xmlWriter.begintag(name, **attrs)
+		xmlWriter.newline()
+		xmlWriter.simpletag("NewState", value=self.NewState)
+		xmlWriter.newline()
+		self._writeFlagsToXML(xmlWriter)
+		for action in self.Actions:
+			attribs = [("GlyphIndexDelta", action.GlyphIndexDelta)]
+			if action.Store:
+				attribs.append(("Flags", "Store"))
+			xmlWriter.simpletag("Action", attribs)
+			xmlWriter.newline()
+		xmlWriter.endtag(name)
+		xmlWriter.newline()
+
 
 class FeatureParams(BaseTable):
 
@@ -1167,7 +1298,7 @@ def _buildClasses():
 		'morx': {
 			0: RearrangementMorph,
 			1: ContextualMorph,
-			# 2: LigatureMorph,
+			2: LigatureMorph,
 			# 3: Reserved,
 			4: NoncontextualMorph,
 			# 5: InsertionMorph,
