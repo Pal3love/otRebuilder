@@ -79,8 +79,8 @@ class RearrangementMorphAction(AATAction):
 		self.MarkLast = False
 		self.ReservedFlags = 0
 
-	def compile(self, writer, font, ligActionIndex):
-		assert ligActionIndex is None
+	def compile(self, writer, font, actionIndex):
+		assert actionIndex is None
 		writer.writeUShort(self.NewState)
 		assert self.Verb >= 0 and self.Verb <= 15, self.Verb
 		flags = self.Verb | self.ReservedFlags
@@ -89,8 +89,8 @@ class RearrangementMorphAction(AATAction):
 		if self.MarkLast: flags |= 0x2000
 		writer.writeUShort(flags)
 
-	def decompile(self, reader, font, ligActionReader):
-		assert ligActionReader is None
+	def decompile(self, reader, font, actionReader):
+		assert actionReader is None
 		self.NewState = reader.readUShort()
 		flags = reader.readUShort()
 		self.Verb = flags & 0xF
@@ -139,8 +139,8 @@ class ContextualMorphAction(AATAction):
 		self.ReservedFlags = 0
 		self.MarkIndex, self.CurrentIndex = 0xFFFF, 0xFFFF
 
-	def compile(self, writer, font, ligActionIndex):
-		assert ligActionIndex is None
+	def compile(self, writer, font, actionIndex):
+		assert actionIndex is None
 		writer.writeUShort(self.NewState)
 		flags = self.ReservedFlags
 		if self.SetMark: flags |= 0x8000
@@ -149,8 +149,8 @@ class ContextualMorphAction(AATAction):
 		writer.writeUShort(self.MarkIndex)
 		writer.writeUShort(self.CurrentIndex)
 
-	def decompile(self, reader, font, ligActionReader):
-		assert ligActionReader is None
+	def decompile(self, reader, font, actionReader):
+		assert actionReader is None
 		self.NewState = reader.readUShort()
 		flags = reader.readUShort()
 		self.SetMark = bool(flags & 0x8000)
@@ -217,8 +217,8 @@ class LigatureMorphAction(AATAction):
 		self.ReservedFlags = 0
 		self.Actions = []
 
-	def compile(self, writer, font, ligActionIndex):
-		assert ligActionIndex is not None
+	def compile(self, writer, font, actionIndex):
+		assert actionIndex is not None
 		writer.writeUShort(self.NewState)
 		flags = self.ReservedFlags
 		if self.SetComponent: flags |= 0x8000
@@ -227,12 +227,12 @@ class LigatureMorphAction(AATAction):
 		writer.writeUShort(flags)
 		if len(self.Actions) > 0:
 			actions = self.compileLigActions()
-			writer.writeUShort(ligActionIndex[actions])
+			writer.writeUShort(actionIndex[actions])
 		else:
 			writer.writeUShort(0)
 
-	def decompile(self, reader, font, ligActionReader):
-		assert ligActionReader is not None
+	def decompile(self, reader, font, actionReader):
+		assert actionReader is not None
 		self.NewState = reader.readUShort()
 		flags = reader.readUShort()
 		self.SetComponent = bool(flags & 0x8000)
@@ -244,10 +244,10 @@ class LigatureMorphAction(AATAction):
 		# so the reserved value should actually be 0x1FFF.
 		# TODO: Report this specification bug to Apple.
 		self.ReservedFlags = flags & 0x1FFF
-		ligActionIndex = reader.readUShort()
+		actionIndex = reader.readUShort()
 		if performAction:
 			self.Actions = self._decompileLigActions(
-				ligActionReader, ligActionIndex)
+				actionReader, actionIndex)
 		else:
 			self.Actions = []
 
@@ -261,11 +261,11 @@ class LigatureMorphAction(AATAction):
 			result.append(struct.pack(">L", value))
 		return bytesjoin(result)
 
-	def _decompileLigActions(self, ligActionReader, ligActionIndex):
+	def _decompileLigActions(self, actionReader, actionIndex):
 		actions = []
 		last = False
-		reader = ligActionReader.getSubReader(
-			ligActionReader.pos + ligActionIndex * 4)
+		reader = actionReader.getSubReader(
+			actionReader.pos + actionIndex * 4)
 		while not last:
 			value = reader.readULong()
 			last = bool(value & 0x80000000)
@@ -315,6 +315,107 @@ class LigatureMorphAction(AATAction):
 			xmlWriter.newline()
 		xmlWriter.endtag(name)
 		xmlWriter.newline()
+
+
+class InsertionMorphAction(AATAction):
+	staticSize = 8
+
+	_FLAGS = ["SetMark", "DontAdvance",
+	          "CurrentIsKashidaLike", "MarkedIsKashidaLike",
+	          "CurrentInsertBefore", "MarkedInsertBefore"]
+
+	def __init__(self):
+		self.NewState = 0
+		for flag in self._FLAGS:
+			setattr(self, flag, False)
+		self.ReservedFlags = 0
+		self.CurrentInsertionAction, self.MarkedInsertionAction = [], []
+
+	def compile(self, writer, font, actionIndex):
+		assert actionIndex is not None
+		writer.writeUShort(self.NewState)
+		flags = self.ReservedFlags
+		if self.SetMark: flags |= 0x8000
+		if self.DontAdvance: flags |= 0x4000
+		if self.CurrentIsKashidaLike: flags |= 0x2000
+		if self.MarkedIsKashidaLike: flags |= 0x1000
+		if self.CurrentInsertBefore: flags |= 0x0800
+		if self.MarkedInsertBefore: flags |= 0x0400
+		flags |= len(self.CurrentInsertionAction) << 5
+		flags |= len(self.MarkedInsertionAction)
+		writer.writeUShort(flags)
+		if len(self.CurrentInsertionAction) > 0:
+			currentIndex = actionIndex[
+				tuple(self.CurrentInsertionAction)]
+		else:
+			currentIndex = 0xFFFF
+		writer.writeUShort(currentIndex)
+		if len(self.MarkedInsertionAction) > 0:
+			markedIndex = actionIndex[
+				tuple(self.MarkedInsertionAction)]
+		else:
+			markedIndex = 0xFFFF
+		writer.writeUShort(markedIndex)
+
+	def decompile(self, reader, font, actionReader):
+		assert actionReader is not None
+		self.NewState = reader.readUShort()
+		flags = reader.readUShort()
+		self.SetMark = bool(flags & 0x8000)
+		self.DontAdvance = bool(flags & 0x4000)
+		self.CurrentIsKashidaLike = bool(flags & 0x2000)
+		self.MarkedIsKashidaLike = bool(flags & 0x1000)
+		self.CurrentInsertBefore = bool(flags & 0x0800)
+		self.MarkedInsertBefore = bool(flags & 0x0400)
+		self.CurrentInsertionAction = self._decompileInsertionAction(
+			actionReader, font,
+			index=reader.readUShort(),
+			count=((flags & 0x03E0) >> 5))
+		self.MarkedInsertionAction = self._decompileInsertionAction(
+			actionReader, font,
+			index=reader.readUShort(),
+			count=(flags & 0x001F))
+
+	def _decompileInsertionAction(self, actionReader, font, index, count):
+		if index == 0xFFFF or count == 0:
+			return []
+		reader = actionReader.getSubReader(
+			actionReader.pos + index * 2)
+		return [font.getGlyphName(glyphID)
+		        for glyphID in reader.readUShortArray(count)]
+
+	def toXML(self, xmlWriter, font, attrs, name):
+		xmlWriter.begintag(name, **attrs)
+		xmlWriter.newline()
+		xmlWriter.simpletag("NewState", value=self.NewState)
+		xmlWriter.newline()
+		self._writeFlagsToXML(xmlWriter)
+		for g in self.CurrentInsertionAction:
+			xmlWriter.simpletag("CurrentInsertionAction", glyph=g)
+			xmlWriter.newline()
+		for g in self.MarkedInsertionAction:
+			xmlWriter.simpletag("MarkedInsertionAction", glyph=g)
+			xmlWriter.newline()
+		xmlWriter.endtag(name)
+		xmlWriter.newline()
+
+	def fromXML(self, name, attrs, content, font):
+		self.__init__()
+		content = [t for t in content if isinstance(t, tuple)]
+		for eltName, eltAttrs, eltContent in content:
+			if eltName == "NewState":
+				self.NewState = safeEval(eltAttrs["value"])
+			elif eltName == "Flags":
+				for flag in eltAttrs["value"].split(","):
+					self._setFlag(flag.strip())
+			elif eltName == "CurrentInsertionAction":
+				self.CurrentInsertionAction.append(
+					eltAttrs["glyph"])
+			elif eltName == "MarkedInsertionAction":
+				self.MarkedInsertionAction.append(
+					eltAttrs["glyph"])
+			else:
+				assert False, eltName
 
 
 class FeatureParams(BaseTable):
