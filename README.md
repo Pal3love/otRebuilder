@@ -1,4 +1,4 @@
-# OpenType Font Rebuilder, powered by [fontTools](https://github.com/fonttools/fonttools)
+# The OpenType Font Rebuilder, Powered by [fontTools](https://github.com/fonttools/fonttools)
 
 This is a quick tool to resolve naming, styling and mapping issues
 among OpenType fonts. Without any options given, it scans and
