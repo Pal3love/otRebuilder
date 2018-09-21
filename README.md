@@ -15,7 +15,10 @@ never overwritten.
 
 ***
 
-## Options:
+## Usage
+`$ otrebuild [options] <inputFont>`
+
+## Available Options
 `-o <outputFont>`: Specify the output font file.
 
 `-c <configTOML>`: Specify the configuration file. It is an
