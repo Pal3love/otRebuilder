@@ -16,7 +16,7 @@ never overwritten.
 ***
 
 ## Usage
-`$ otrebuild [options] <inputFont>`
+`otrebuild [options] <inputFont>`
 
 ## Available Options
 `-o <outputFont>`: Specify the output font file.
