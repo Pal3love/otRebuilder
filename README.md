@@ -2,7 +2,7 @@
 
 This is a quick tool to resolve naming, styling and mapping issues
 among OpenType fonts. Without any options given, it scans and
-maintain metedata consistencies among font tables; with a simple
+maintains the metedata consistency among font tables; with a simple
 but powerful configuration file, all intricate data fields
 between font tables such as `name`, `head`, `OS/2` can be
 automatically generated without compromising platform-specific
