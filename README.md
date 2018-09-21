@@ -83,6 +83,6 @@ never overwritten.
     `--refresh`, `--recalculate`, `--removeBitmap`, `--removeHinting`,
     `--rebuildMapping`, `--allowUpgrade`, and `--dummySignature`.
 
-* Windows legacy symbol fonts are currently not supported.
+** Windows legacy symbol fonts are currently not supported.
 
 ** Variable fonts are currently not supported.
