@@ -267,7 +267,7 @@ class Initializer(Workers.Worker):
         post.italicAngle = 0.0
         post.underlinePosition = Constants.DEFAULT_UNDERLINE_POSITION
         post.underlineThickness = Constants.DEFAULT_UNDERLINE_THICKNESS
-        post.isFixedPitch = 0L
+        post.isFixedPitch = 0
         post.minMemType42 = 0
         post.maxMemType42 = 0
         post.minMemType1 = 0

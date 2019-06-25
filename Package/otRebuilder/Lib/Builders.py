@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function, division, absolute_import
+
 import os.path
 import sys
 
@@ -60,8 +60,8 @@ class cffTopDictBuilder(object):
             return False
 
     def setROS(self, registry, ordering, supplement):
-        if registry and (isinstance(registry, str) or isinstance(registry, unicode)) and \
-            ordering and (isinstance(ordering, str) or isinstance(ordering, unicode)) and \
+        if registry and (isinstance(registry, str) or isinstance(registry, str)) and \
+            ordering and (isinstance(ordering, str) or isinstance(ordering, str)) and \
             (isinstance(supplement, float) or isinstance(supplement, int)):
             self.__cidRegistry = self.__toASCII(registry.strip())
             self.__cidOrdering = self.__toASCII(ordering.strip())
@@ -71,7 +71,7 @@ class cffTopDictBuilder(object):
             return False
 
     def setPostScriptName(self, psName):
-        if psName and (isinstance(psName, str) or isinstance(psName, unicode)):
+        if psName and (isinstance(psName, str) or isinstance(psName, str)):
             psName = re.sub(r"[\(\)\[\]\{\}<>/%]+", r"", psName)
             psName = psName.strip()
             psName = re.sub(r"\s+", r"-", psName)
@@ -84,35 +84,35 @@ class cffTopDictBuilder(object):
             return False
 
     def setFullName(self, fullName):
-        if fullName and (isinstance(fullName, str) or isinstance(fullName, unicode)):
+        if fullName and (isinstance(fullName, str) or isinstance(fullName, str)):
             self.__fullName = self.__toASCII(fullName.strip())
             return True
         else:
             return False
 
     def setFamily(self, family):
-        if family and (isinstance(family, str) or isinstance(family, unicode)):
+        if family and (isinstance(family, str) or isinstance(family, str)):
             self.__family = self.__toASCII(family.strip())
             return True
         else:
             return False
 
     def setWeight(self, weight):
-        if weight and (isinstance(weight, str) or isinstance(weight, unicode)):
+        if weight and (isinstance(weight, str) or isinstance(weight, str)):
             self.__weight = self.__toASCII(weight.strip())
             return True
         else:
             return False
 
     def setCopyright(self, copyright):
-        if copyright and (isinstance(copyright, str) or isinstance(copyright, unicode)):
+        if copyright and (isinstance(copyright, str) or isinstance(copyright, str)):
             self.__copyright = self.__toASCII(copyright.strip())
             return True
         else:
             return False
 
     def setTrademark(self, trademark):
-        if trademark and (isinstance(trademark, str) or isinstance(trademark, unicode)):
+        if trademark and (isinstance(trademark, str) or isinstance(trademark, str)):
             self.__trademark = self.__toASCII(trademark.strip())
             return True
         else:
@@ -357,16 +357,16 @@ class NameTableBuilder(object):
     def addStylelink(self, stylelinkCode):
         if stylelinkCode == Constants.STYLELINK_BOLD:
             # self.addEngName("Bold", 2)
-            self.addWinNameEx(u"Bold", 2, 0x0409)
+            self.addWinNameEx("Bold", 2, 0x0409)
         elif stylelinkCode == Constants.STYLELINK_ITALIC:
             # self.addEngName("Italic", 2)
-            self.addWinNameEx(u"Italic", 2, 0x0409)
+            self.addWinNameEx("Italic", 2, 0x0409)
         elif stylelinkCode == Constants.STYLELINK_BOLDITALIC:
             # self.addEngName("Bold Italic", 2)
-            self.addWinNameEx(u"Bold Italic", 2, 0x0409)
+            self.addWinNameEx("Bold Italic", 2, 0x0409)
         else:
             # self.addEngName("Regular", 2)
-            self.addWinNameEx(u"Regular", 2, 0x0409)
+            self.addWinNameEx("Regular", 2, 0x0409)
         return
 
     # Name ID 3, English US
@@ -424,10 +424,10 @@ class NameTableBuilder(object):
             cff = cffTable.cff
             if hasattr(cff, "fontNames") and len(cff.fontNames) > 0 and len(cff.fontNames[0]) > 0:
                 try:
-                    self.addPostScriptName(cff.fontNames[0].decode())
+                    self.addPostScriptName(cff.fontNames[0])
                 except UnicodeDecodeError:
                     print("WARNING: Corrupted PostScript Name in table `CFF `.", file = sys.stderr)
-                    self.addPostScriptName(cff.fontNames[0].decode(errors = "ignore"))
+                    self.addPostScriptName(cff.fontNames[0](errors = "ignore"))
         return
 
     # Name ID 18, Macintosh only
@@ -452,7 +452,7 @@ class NameTableBuilder(object):
         if nameTable and hasattr(nameTable, "names") and isinstance(nameTable.names, list):
             for namRec in nameTable.names:
                 if namRec.nameID == 20:             
-                    self.addPSCIDFFName(namRec.string.decode(errors = "ignore"))
+                    self.addPSCIDFFName(namRec.string(errors = "ignore"))
                     return
         return
 
@@ -518,7 +518,7 @@ class NameTableBuilder(object):
     # Get Python Unicode string from either bytes or uString.
     def __getUstring(self, string):
         if isinstance(string, bytes):
-            return string.decode(errors = "ignore")
+            return string(errors = "ignore")
         else:
             return string
 
@@ -675,4 +675,3 @@ class NameRecordEx(object):
                 self.__nameID, self.__platformID, 
                 self.__platEncID, self.__langID
                 )
-

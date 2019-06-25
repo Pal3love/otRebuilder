@@ -8,11 +8,11 @@ import sys
 dependencyDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../Dep")
 sys.path.insert(0, dependencyDir)
 
-from fontTools.ttLib import newTable
 from fontTools.misc.transform import Scale
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib.tables.ttProgram import Program
+from fontTools.ttLib import TTFont, newTable
 from cu2qu.pens import Cu2QuPen
 
 from otRebuilder.Lib import Workers
@@ -27,7 +27,7 @@ class Converter(Workers.Worker):
         # maxErr = 1.0, approximation error, measured in units per em (UPM).
         # postFormat = 2.0, default `post` table format.
         # reverseDirection = True, assuming the input contours' direction is correctly set (counter-clockwise), we just flip it to clockwise.
-        if self.font.sfntVersion != "OTTO" or not self.font.has_key("CFF ") or not self.font.has_key("post"):
+        if self.font.sfntVersion != "OTTO" or "CFF " not in self.font or "post" not in self.font:
             print("WARNING: Invalid CFF-based font. --otf2ttf is now ignored.", file = sys.stderr)
             self.jobs.convert_otf2ttf = False
             return
@@ -36,7 +36,7 @@ class Converter(Workers.Worker):
         quadGlyphs = {}
         glyphOrder = self.font.getGlyphOrder()
         glyphSet = self.font.getGlyphSet()
-        for glyphName in glyphSet.keys():
+        for glyphName in list(glyphSet.keys()):
             glyph = glyphSet[glyphName]
             ttPen = TTGlyphPen(glyphSet)
             cu2quPen = Cu2QuPen(ttPen, maxErr, reverseDirection)
@@ -74,7 +74,7 @@ class Converter(Workers.Worker):
         maxp.maxSizeOfInstructions = 0
         maxp.maxComponentElements = max(
             len(g.components if hasattr(g, "components") else [])
-            for g in glyf.glyphs.values())
+            for g in list(glyf.glyphs.values()))
         self.font["maxp"] = maxp
 
         # Create an empty `loca` table, which will be automatically generated upon compile
@@ -86,6 +86,11 @@ class Converter(Workers.Worker):
         post.extraNames = []
         post.mapping = {}
         post.glyphOrder = glyphOrder
+        try:
+            post.compile(self.font)
+        except OverflowError:
+            post.formatType = 3
+            print("Glyph names do not fit in 'post' table format 2, using format 3 instead.")
 
         # Change sfntVersion from CFF to TrueType
         self.font.sfntVersion = "\x00\x01\x00\x00"
@@ -95,7 +100,8 @@ class Converter(Workers.Worker):
 
         # Clean-ups
         del self.font["CFF "]
-        if self.font.has_key("VORG"):
+        glyf.compile(self.font)
+        if "VORG" in self.font:
             del self.font["VORG"]
         return
 
@@ -103,7 +109,7 @@ class Converter(Workers.Worker):
         # Calculate scaling factor between old and new UPM
         upmOld = self.font["head"].unitsPerEm
         upmNew = int(targetUPM)
-        isCubic = self.font.has_key("CFF ")
+        isCubic = "CFF " in self.font
         if upmOld == upmNew:
             return
         elif upmNew < 16 or upmNew > 16384:
@@ -122,7 +128,7 @@ class Converter(Workers.Worker):
         scaledGlyphs = {}
         glyphOrder = self.font.getGlyphOrder()
         glyphSet = self.font.getGlyphSet()
-        for glyphName in glyphSet.keys():
+        for glyphName in list(glyphSet.keys()):
             glyph = glyphSet[glyphName]
             if isCubic:  # TODO: `CFF `
                 # basePen = OTGlyphPen(glyphSet)
@@ -184,7 +190,7 @@ class Converter(Workers.Worker):
             head.yMax = int(round(head.yMax * scaleFactor))
         if kern:
             for subtable in kern.kernTables:
-                for pair in subtable.kernTable.keys():
+                for pair in list(subtable.kernTable.keys()):
                     subtable.kernTable[pair] = int(round(subtable.kernTable[pair] * scaleFactor))
         if hhea:
             hhea.ascent = int(round(hhea.ascent * scaleFactor))
@@ -209,13 +215,13 @@ class Converter(Workers.Worker):
             # The slope doesn't change no matter what the scale factor changes.
             vhea.caretOffset = int(round(vhea.caretOffset * scaleFactor))
         if hmtx:
-            for glyfName in hmtx.metrics.keys():
+            for glyfName in list(hmtx.metrics.keys()):
                 # Type tuple; [0]: advance width; [1]: lsb
                 tempVal0 = int(round(hmtx.metrics[glyfName][0] * scaleFactor))
                 tempVal1 = int(round(hmtx.metrics[glyfName][1] * scaleFactor))
                 hmtx.metrics[glyfName] = (tempVal0, tempVal1)
         if vmtx:
-            for glyfName in vmtx.metrics.keys():
+            for glyfName in list(vmtx.metrics.keys()):
                 # Type tuple; [0]: advance width; [1]: lsb
                 tempVal0 = int(round(vmtx.metrics[glyfName][0] * scaleFactor))
                 tempVal1 = int(round(vmtx.metrics[glyfName][1] * scaleFactor))
@@ -405,4 +411,3 @@ class Converter(Workers.Worker):
         if hasattr(valueRecord, "YAdvance") and valueRecord.YAdvance:
             valueRecord.YAdvance = int(round(valueRecord.YAdvance * scaleFactor))
         return
-

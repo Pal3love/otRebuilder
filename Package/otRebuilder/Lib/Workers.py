@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from __future__ import print_function, division, absolute_import
+
 import os.path
 import sys
+import codecs
 
 dependencyDir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../Dep")
 sys.path.insert(0, dependencyDir)
+decode_mac_roman = codecs.getdecoder("mac_roman")
 
 from fontTools.ttLib.tables import _c_m_a_p
 from fontTools.ttLib.tables import _n_a_m_e
@@ -50,7 +52,7 @@ class OS2f2Worker(Worker):
             return hmtx.metrics["space"][0]
         count = 0
         sumWidth = 0
-        for glyfName in hmtx.metrics.keys():
+        for glyfName in list(hmtx.metrics.keys()):
             # [0]: advance width; [1]: lsb
             if hmtx.metrics[glyfName][0] == 0:
                 continue
@@ -113,7 +115,7 @@ class CmapWorker(Worker):
     @staticmethod
     def makeTruncatedDict(fullDict):
         truncatedDict = {}
-        for code in fullDict.keys():
+        for code in list(fullDict.keys()):
             if (code < 0xD800) or (code > 0xDFFF and code < 0x10000):
                 truncatedDict[code] = fullDict[code]
         return truncatedDict
@@ -135,8 +137,8 @@ class CmapWorker(Worker):
         unicodeMappingDict = unicodeSubtable.cmap
         for i in range(0, 256):
             # Get the corresponding Unicode value of Macintosh Roman code
-            unicodeFromMacRoman = ord(chr(i).decode('mac_roman'))
-            if unicodeMappingDict.has_key(unicodeFromMacRoman):
+            unicodeFromMacRoman = decode_mac_roman(chr(i).encode())
+            if unicodeFromMacRoman in unicodeMappingDict:
                 macRomanMappingDict[i] = unicodeMappingDict[unicodeFromMacRoman]
         # Subtable format for modern MacRoman should be 6 instead of 0.
         return CmapWorker.makeSubtable(1, 0, 0, 6, macRomanMappingDict)
@@ -146,8 +148,8 @@ class CmapWorker(Worker):
         fmt4Subtables = []
         unicodeMappingDict = {}
         macRomanMappingDict = macRomanSubtable.cmap
-        for macCode in macRomanMappingDict.keys():
-            uniCode = ord(chr(macCode).decode('mac_roman'))
+        for macCode in list(macRomanMappingDict.keys()):
+            uniCode = decode_mac_roman(chr(macCode).encode())
             unicodeMappingDict[uniCode] = macRomanMappingDict[macCode]
         fmt4Subtables.append(CmapWorker.makeSubtable(3, 1, 0, 4, unicodeMappingDict))  # Microsoft Unicode BMP
         fmt4Subtables.append(CmapWorker.makeSubtable(0, 3, 0, 4, unicodeMappingDict))  # Unicode BMP
@@ -306,7 +308,7 @@ class NameWorker(Worker):
 
     @staticmethod
     def makeMacName(uString, nameID, langTag):
-        if Constants.LANGTAG_TO_MAC_LANGCODE.has_key(langTag):
+        if langTag in Constants.LANGTAG_TO_MAC_LANGCODE:
             macLngID = Constants.LANGTAG_TO_MAC_LANGCODE[langTag]
             macPltEncID = Constants.MAC_LANGCODE_TO_PLATENCID[macLngID]
             return NameWorker.makeName(uString, nameID, 1, macPltEncID, macLngID)
@@ -315,7 +317,7 @@ class NameWorker(Worker):
 
     @staticmethod
     def makeMacNameEx(uString, nameID, macLngID):
-        if Constants.MAC_LANGCODE_TO_PLATENCID.has_key(macLngID):
+        if macLngID in Constants.MAC_LANGCODE_TO_PLATENCID:
             macPltEncID = Constants.MAC_LANGCODE_TO_PLATENCID[macLngID]
             return NameWorker.makeName(uString, nameID, 1, macPltEncID, macLngID)
         else:
@@ -325,7 +327,7 @@ class NameWorker(Worker):
     @staticmethod
     def makeWinNames(uString, nameID, winPltEncID, langTag):
         winNamRecs = []
-        if Constants.LANGTAG_TO_MAC_LANGCODE.has_key(langTag):
+        if langTag in Constants.LANGTAG_TO_MAC_LANGCODE:
             macLngID = Constants.LANGTAG_TO_MAC_LANGCODE[langTag]
             for winLngID in Constants.MAC_LANGCODE_TO_WIN[macLngID]:
                 winNamRecs.append(NameWorker.makeName(uString, nameID, 
@@ -342,7 +344,7 @@ class NameWorker(Worker):
 
     @staticmethod
     def winName2Mac(winNameRecord):
-        if Constants.WIN_LANGCODE_TO_MAC.has_key(winNameRecord.langID):
+        if winNameRecord.langID in Constants.WIN_LANGCODE_TO_MAC:
             macLngID = Constants.WIN_LANGCODE_TO_MAC[winNameRecord.langID]
             # There must be the corresponding macPltEncID if macLngID exists!
             macPltEncID = Constants.MAC_LANGCODE_TO_PLATENCID[macLngID]
@@ -363,7 +365,7 @@ class NameWorker(Worker):
     @staticmethod
     def macName2WinAll(macNameRecord, winPltEncID):
         winNamRecs = []
-        if Constants.MAC_LANGCODE_TO_WIN.has_key(macNameRecord.langID):
+        if macNameRecord.langID in Constants.MAC_LANGCODE_TO_WIN:
             for winLngID in Constants.MAC_LANGCODE_TO_WIN[macNameRecord.langID]:
                 winNamRecs.append(NameWorker.makeName(macNameRecord.toUnicode(), 
                     macNameRecord.nameID, 3, winPltEncID, winLngID
@@ -371,4 +373,3 @@ class NameWorker(Worker):
             return winNamRecs
         else:
             return None
-
